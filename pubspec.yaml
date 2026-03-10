@@ -1,0 +1,12 @@
+name: kuwboo_workspace
+publish_to: 'none'
+
+environment:
+  sdk: ^3.11.1
+
+workspace:
+  - apps/web
+  - apps/mobile
+  - packages/ui
+  - packages/models
+  - packages/api_client

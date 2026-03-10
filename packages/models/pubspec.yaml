@@ -1,0 +1,9 @@
+name: kuwboo_models
+description: Shared Kuwboo data models
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.11.1
+
+resolution: workspace
