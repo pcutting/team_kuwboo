@@ -215,12 +215,6 @@ class _DatingCardStackState extends State<DatingCardStack>
                   color: theme.tertiary,
                   bgColor: theme.tertiary.withValues(alpha: 0.12),
                   semanticLabel: 'Rewind to previous profile',
-                  onTap: () {
-                    if (_currentIndex > 0) {
-                      setState(() => _currentIndex--);
-                      ProtoToast.show(context, theme.icons.replay, 'Rewound to previous profile');
-                    }
-                  },
                 ),
                 _CircleButton(
                   icon: theme.icons.close,
@@ -228,7 +222,6 @@ class _DatingCardStackState extends State<DatingCardStack>
                   color: theme.textTertiary,
                   bgColor: theme.background,
                   semanticLabel: 'Pass on this profile',
-                  onTap: _onDislike,
                 ),
                 _CircleButton(
                   icon: Icons.star_rounded,
@@ -236,7 +229,6 @@ class _DatingCardStackState extends State<DatingCardStack>
                   color: theme.tertiary,
                   bgColor: theme.tertiary.withValues(alpha: 0.12),
                   semanticLabel: 'Super like this profile',
-                  onTap: _onSuperLike,
                 ),
                 _CircleButton(
                   icon: theme.icons.favoriteFilled,
@@ -244,7 +236,6 @@ class _DatingCardStackState extends State<DatingCardStack>
                   color: theme.accent,
                   bgColor: theme.accent.withValues(alpha: 0.12),
                   semanticLabel: 'Like this profile',
-                  onTap: () => _onLike(state),
                 ),
               ],
             ),
@@ -331,13 +322,8 @@ class _DatingCardStackState extends State<DatingCardStack>
 
     return Positioned.fill(
       child: GestureDetector(
-        onPanStart: _onPanStart,
-        onPanUpdate: _onPanUpdate,
-        onPanEnd: _onPanEnd,
         onTap: () {
-          if (_dragOffset.distance < 5) {
-            state.push(ProtoRoutes.datingProfile);
-          }
+          state.push(ProtoRoutes.datingProfile);
         },
         child: AnimatedBuilder(
           animation: Listenable.merge([_dismissController, _springController]),

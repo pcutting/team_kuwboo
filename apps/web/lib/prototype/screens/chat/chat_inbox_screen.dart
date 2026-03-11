@@ -68,7 +68,6 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
         children: [
           ProtoSubBar(
             title: 'Messages',
-            actions: [_buildVariantToggle(theme)],
           ),
 
           // V2: search bar + mark all read

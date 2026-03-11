@@ -122,9 +122,7 @@ class _PrototypeAppState extends State<PrototypeApp> {
         activeModule: _activeModule,
         navigatorKey: _navigatorKey,
         isYoyoAreaView: _isYoyoAreaView,
-        onYoyoViewToggle: () {
-          setState(() => _isYoyoAreaView = !_isYoyoAreaView);
-        },
+        onYoyoViewToggle: () {},
         onModuleChanged: (module) {
           setState(() {
             _activeModule = module;
@@ -134,73 +132,39 @@ class _PrototypeAppState extends State<PrototypeApp> {
           });
         },
         yoyoRange: _yoyoRange,
-        onYoyoRangeChanged: (value) {
-          setState(() => _yoyoRange = value);
-        },
+        onYoyoRangeChanged: (_) {},
         isYoyoHidden: _isYoyoHidden,
-        onYoyoHiddenToggle: () {
-          setState(() => _isYoyoHidden = !_isYoyoHidden);
-        },
+        onYoyoHiddenToggle: () {},
         yoyoFriendsOnly: _yoyoFriendsOnly,
-        onYoyoFriendsOnlyToggle: () {
-          setState(() => _yoyoFriendsOnly = !_yoyoFriendsOnly);
-        },
+        onYoyoFriendsOnlyToggle: () {},
         yoyoSelectedInterests: _yoyoSelectedInterests,
-        onYoyoInterestsChanged: (interests) {
-          setState(() => _yoyoSelectedInterests = interests);
-        },
+        onYoyoInterestsChanged: (_) {},
         yoyoShowOnline: _yoyoShowOnline,
-        onYoyoShowOnlineChanged: (value) {
-          setState(() => _yoyoShowOnline = value);
-        },
+        onYoyoShowOnlineChanged: (_) {},
         yoyoShowDistance: _yoyoShowDistance,
-        onYoyoShowDistanceChanged: (value) {
-          setState(() => _yoyoShowDistance = value);
-        },
+        onYoyoShowDistanceChanged: (_) {},
         yoyoConnectFilter: _yoyoConnectFilter,
-        onYoyoConnectFilterChanged: (value) {
-          setState(() => _yoyoConnectFilter = value);
-        },
+        onYoyoConnectFilterChanged: (_) {},
         yoyoV2SessionActive: _yoyoV2SessionActive,
-        onYoyoV2SessionToggle: () {
-          setState(() => _yoyoV2SessionActive = !_yoyoV2SessionActive);
-        },
+        onYoyoV2SessionToggle: () {},
         yoyoV2SessionDuration: _yoyoV2SessionDuration,
-        onYoyoV2SessionDurationChanged: (value) {
-          setState(() => _yoyoV2SessionDuration = value);
-        },
+        onYoyoV2SessionDurationChanged: (_) {},
         yoyoV2DataRetentionHours: _yoyoV2DataRetentionHours,
-        onYoyoV2DataRetentionChanged: (value) {
-          setState(() => _yoyoV2DataRetentionHours = value);
-        },
+        onYoyoV2DataRetentionChanged: (_) {},
         yoyoV2VisibilityTier: _yoyoV2VisibilityTier,
-        onYoyoV2VisibilityTierChanged: (value) {
-          setState(() => _yoyoV2VisibilityTier = value);
-        },
+        onYoyoV2VisibilityTierChanged: (_) {},
         yoyoV2EncounterFilter: _yoyoV2EncounterFilter,
-        onYoyoV2EncounterFilterChanged: (value) {
-          setState(() => _yoyoV2EncounterFilter = value);
-        },
+        onYoyoV2EncounterFilterChanged: (_) {},
         yoyoV2RelationshipFilter: _yoyoV2RelationshipFilter,
-        onYoyoV2RelationshipFilterChanged: (value) {
-          setState(() => _yoyoV2RelationshipFilter = value);
-        },
+        onYoyoV2RelationshipFilterChanged: (_) {},
         yoyoV2EncounterTransparency: _yoyoV2EncounterTransparency,
-        onYoyoV2EncounterTransparencyChanged: (value) {
-          setState(() => _yoyoV2EncounterTransparency = value);
-        },
+        onYoyoV2EncounterTransparencyChanged: (_) {},
         yoyoVariant: widget.yoyoVariant,
-        onYoyoVariantChanged: (value) {
-          widget.onYoyoVariantChanged?.call(value);
-        },
+        onYoyoVariantChanged: (_) {},
         yoyoMode: widget.yoyoMode,
-        onYoyoModeChanged: (value) {
-          widget.onYoyoModeChanged?.call(value);
-        },
+        onYoyoModeChanged: (_) {},
         isDarkMode: _isDarkMode,
-        onDarkModeChanged: (value) {
-          setState(() => _isDarkMode = value);
-        },
+        onDarkModeChanged: (_) {},
         child: Navigator(
           key: _navigatorKey,
           onGenerateRoute: generateRoute,

@@ -67,7 +67,6 @@ class _ProfileNotificationsScreenState
         children: [
           ProtoSubBar(
             title: 'Notifications',
-            actions: [_buildVariantToggle(theme)],
           ),
 
           // V2: search bar + mark all read
