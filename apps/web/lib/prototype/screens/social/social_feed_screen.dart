@@ -214,40 +214,6 @@ class _SocialTopBar extends StatelessWidget {
             ),
           ),
 
-          const SizedBox(width: 8),
-
-          // Variant toggle buttons (temporary)
-          for (int i = 0; i < 5; i++) ...[
-            GestureDetector(
-              onTap: () => onVariantChanged(i),
-              child: Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: i == activeVariant ? theme.primary : theme.background,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: i == activeVariant
-                        ? theme.primary
-                        : theme.textTertiary.withValues(alpha: 0.4),
-                    width: 1,
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    '${i + 1}',
-                    style: theme.caption.copyWith(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: i == activeVariant ? Colors.white : theme.textTertiary,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            if (i < 4) const SizedBox(width: 4),
-          ],
-
           const Spacer(),
 
           // Chat icon with badge

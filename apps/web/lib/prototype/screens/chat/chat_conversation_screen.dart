@@ -27,49 +27,18 @@ class _ChatConversationScreenState extends State<ChatConversationScreen> {
       color: theme.background,
       child: Column(
         children: [
-          // Header: v1 = ProtoSubBar, v2 = custom two-row header
-          _variant == 0
-              ? _SimpleHeader(
-                  theme: theme,
-                  variant: _variant,
-                  onVariantChanged: (v) => setState(() => _variant = v),
-                )
-              : _ChatHeader(
-                  theme: theme,
-                  variant: _variant,
-                  onVariantChanged: (v) => setState(() => _variant = v),
-                ),
-          // Purchase badge: v2 only
-          if (_variant == 1) _PurchaseBadge(theme: theme),
+          // Header: V1 simple header (locked for demo)
+          _SimpleHeader(
+            theme: theme,
+            variant: 0,
+            onVariantChanged: (_) {},
+          ),
           // Messages
           Expanded(
-            child: _variant == 0
-                ? _SimpleMessageList(theme: theme, messages: messages)
-                : ListView(
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 16, vertical: 8),
-                    children: [
-                      for (int i = 0; i < messages.length; i++)
-                        _swipeableMessage(
-                          context,
-                          theme,
-                          messages[i],
-                          i,
-                          _MessageBubble(
-                            theme: theme,
-                            msg: messages[i],
-                            index: i,
-                            allMessages: messages,
-                          ),
-                        ),
-                      _TypingIndicator(theme: theme),
-                    ],
-                  ),
+            child: _SimpleMessageList(theme: theme, messages: messages),
           ),
-          // Input bar: v1 = simple, v2 = rich
-          _variant == 0
-              ? _SimpleInputBar(theme: theme)
-              : _RichInputBar(theme: theme),
+          // Input bar: V1 simple
+          _SimpleInputBar(theme: theme),
           const SizedBox(height: 20),
         ],
       ),
@@ -296,8 +265,6 @@ class _SimpleHeader extends StatelessWidget {
           ),
           const SizedBox(width: 8),
           Text('Maya', style: theme.title),
-          const Spacer(),
-          _buildVariantToggle(theme, variant, onVariantChanged),
           const Spacer(),
           ProtoPressButton(
             onTap: () => _showMoreMenu(context),
