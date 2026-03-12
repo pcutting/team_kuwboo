@@ -17,15 +17,50 @@ class YoyoSettingsScreen extends StatefulWidget {
 }
 
 class _YoyoSettingsScreenState extends State<YoyoSettingsScreen> {
+  ValueNotifier<int>? _variantCount;
+  ValueNotifier<int>? _variantIndex;
   bool _waveNotifications = true;
   bool _connectionNotifications = true;
   bool _dndEnabled = false;
   bool _backgroundDiscovery = false;
 
   @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = PrototypeStateProvider.maybeOf(context);
+    if (provider != null && _variantIndex == null) {
+      _variantCount = provider.screenVariantCount;
+      _variantCount!.value = 2;
+      _variantIndex = provider.screenVariantIndex;
+      _variantIndex!.value = provider.yoyoVariant;
+      _variantIndex!.addListener(_onExternalVariantChange);
+    }
+  }
+
+  void _onExternalVariantChange() {
+    final idx = _variantIndex?.value ?? 0;
+    final state = PrototypeStateProvider.maybeOf(context);
+    if (state != null && idx != state.yoyoVariant && idx >= 0 && idx < 2) {
+      state.onYoyoVariantChanged(idx);
+    }
+  }
+
+  @override
+  void dispose() {
+    _variantIndex?.removeListener(_onExternalVariantChange);
+    _variantCount?.value = 0;
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = PrototypeStateProvider.of(context);
     final theme = ProtoTheme.of(context);
+    if (_variantIndex != null && _variantIndex!.value != state.yoyoVariant) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _variantIndex!.value = state.yoyoVariant;
+      });
+    }
 
     return Container(
       color: theme.background,

@@ -314,6 +314,10 @@ class _PrototypeToolPageState extends State<PrototypeToolPage> {
                   valueListenable: _screenVariantCount,
                   builder: (context, count, _) {
                     if (count <= 0) return const SizedBox.shrink();
+                    // Clamp stale index from a previous screen
+                    if (_screenVariantIndex.value >= count) {
+                      _screenVariantIndex.value = 0;
+                    }
                     return ValueListenableBuilder<int>(
                       valueListenable: _screenVariantIndex,
                       builder: (context, activeIndex, _) {
