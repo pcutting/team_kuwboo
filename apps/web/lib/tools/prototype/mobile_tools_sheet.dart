@@ -130,10 +130,11 @@ class _MobileToolsSheetState extends State<MobileToolsSheet> {
                 // const SizedBox(height: 6),
                 // _buildIconSetSection(),
 
-                const SizedBox(height: 16),
-                _sectionLabel('YoYo Controls'),
-                const SizedBox(height: 8),
-                _buildYoyoToggles(),
+                // YoYo controls hidden for now
+                // const SizedBox(height: 16),
+                // _sectionLabel('YoYo Controls'),
+                // const SizedBox(height: 8),
+                // _buildYoyoToggles(),
 
                 // ── Properties Panel ─────────────────────────────────
                 const SizedBox(height: 24),
