@@ -20,8 +20,43 @@ class SocialFeedScreen extends StatefulWidget {
 
 class _SocialFeedScreenState extends State<SocialFeedScreen> {
   int _storyVariant = 0; // 0-4
+  ValueNotifier<int>? _variantCount;
+  ValueNotifier<int>? _variantIndex;
 
-  static const _variantLabels = ['1', '2', '3', '4', '5'];
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final provider = PrototypeStateProvider.maybeOf(context);
+    if (provider != null && _variantIndex == null) {
+      _variantCount = provider.screenVariantCount;
+      _variantIndex = provider.screenVariantIndex;
+      _storyVariant = _variantIndex!.value.clamp(0, 4);
+      _variantIndex!.addListener(_onExternalVariantChange);
+      // Defer count registration to run after any pending dispose from previous screen
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _variantCount!.value = 5;
+      });
+    }
+  }
+
+  void _onExternalVariantChange() {
+    final idx = _variantIndex?.value ?? 0;
+    if (idx != _storyVariant && idx >= 0 && idx < 5) {
+      setState(() => _storyVariant = idx);
+    }
+  }
+
+  @override
+  void dispose() {
+    _variantIndex?.removeListener(_onExternalVariantChange);
+    _variantCount?.value = 0;
+    super.dispose();
+  }
+
+  void _setVariant(int v) {
+    setState(() => _storyVariant = v);
+    _variantIndex?.value = v;
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -36,7 +71,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
           // Custom top bar with variant toggles
           _SocialTopBar(
             activeVariant: _storyVariant,
-            onVariantChanged: (v) => setState(() => _storyVariant = v),
+            onVariantChanged: _setVariant,
           ),
 
           Expanded(
