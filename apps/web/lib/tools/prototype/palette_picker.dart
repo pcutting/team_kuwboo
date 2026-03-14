@@ -2,8 +2,9 @@ import 'package:flutter/material.dart';
 import '../../data/color_palettes.dart';
 import '../../prototype/proto_theme.dart';
 
-/// A 4-column grid showing 16 palette options:
-/// first cell = dynamic "design default", then 15 swappable palettes.
+/// A numbered vertical list showing palette options:
+/// row 0 = dynamic "design default", then rows 1–N for visible palettes.
+/// Each row shows 6 color dots (bg, primary, secondary, accent, tertiary, text).
 class PalettePicker extends StatelessWidget {
   final int currentDesignIndex;
   final int? selectedPaletteIndex;
@@ -19,6 +20,7 @@ class PalettePicker extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final designTheme = ProtoTheme.fromDesignIndex(currentDesignIndex);
+    final palettes = ColorPalette.visible;
 
     return Padding(
       padding: const EdgeInsets.all(12),
@@ -38,50 +40,58 @@ class PalettePicker extends StatelessWidget {
               ),
             ),
           ),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: [
-              // Cell 0: Dynamic design default
-              _PaletteCell(
-                label: 'Default',
-                primaryColor: designTheme.primary,
-                secondaryColor: designTheme.secondary,
-                backgroundColor: designTheme.background,
-                isSelected: selectedPaletteIndex == null,
-                onTap: () => onPaletteSelected(null),
-              ),
-              // Cells 1-15: The 15 palettes
-              for (int i = 0; i < ColorPalette.visible.length; i++)
-                _PaletteCell(
-                  label: ColorPalette.visible[i].shortName,
-                  primaryColor: ColorPalette.visible[i].primary,
-                  secondaryColor: ColorPalette.visible[i].secondary,
-                  backgroundColor: ColorPalette.visible[i].background,
-                  isSelected: selectedPaletteIndex == i,
-                  onTap: () => onPaletteSelected(i),
-                ),
+          // Row 0: Design default
+          _PaletteRow(
+            index: 0,
+            name: 'Default',
+            colors: [
+              designTheme.background,
+              designTheme.primary,
+              designTheme.secondary,
+              designTheme.accent,
+              designTheme.tertiary,
+              designTheme.text,
             ],
+            highlightColor: designTheme.primary,
+            isSelected: selectedPaletteIndex == null,
+            onTap: () => onPaletteSelected(null),
           ),
+          // Rows 1–N: Visible palettes
+          for (int i = 0; i < palettes.length; i++)
+            _PaletteRow(
+              index: i + 1,
+              name: palettes[i].name,
+              colors: [
+                palettes[i].background,
+                palettes[i].primary,
+                palettes[i].secondary,
+                palettes[i].accent,
+                palettes[i].tertiary,
+                palettes[i].text,
+              ],
+              highlightColor: palettes[i].primary,
+              isSelected: selectedPaletteIndex == i,
+              onTap: () => onPaletteSelected(i),
+            ),
         ],
       ),
     );
   }
 }
 
-class _PaletteCell extends StatelessWidget {
-  final String label;
-  final Color primaryColor;
-  final Color secondaryColor;
-  final Color backgroundColor;
+class _PaletteRow extends StatelessWidget {
+  final int index;
+  final String name;
+  final List<Color> colors;
+  final Color highlightColor;
   final bool isSelected;
   final VoidCallback onTap;
 
-  const _PaletteCell({
-    required this.label,
-    required this.primaryColor,
-    required this.secondaryColor,
-    required this.backgroundColor,
+  const _PaletteRow({
+    required this.index,
+    required this.name,
+    required this.colors,
+    required this.highlightColor,
     required this.isSelected,
     required this.onTap,
   });
@@ -92,83 +102,73 @@ class _PaletteCell extends StatelessWidget {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 150),
-        width: 72,
-        padding: const EdgeInsets.symmetric(vertical: 8),
+        padding: const EdgeInsets.symmetric(vertical: 10, horizontal: 12),
         decoration: BoxDecoration(
           color: isSelected
-              ? primaryColor.withValues(alpha: 0.15)
+              ? highlightColor.withValues(alpha: 0.15)
               : Colors.white.withValues(alpha: 0.03),
           borderRadius: BorderRadius.circular(8),
           border: Border.all(
             color: isSelected
-                ? primaryColor
+                ? highlightColor
                 : Colors.white.withValues(alpha: 0.08),
             width: isSelected ? 1.5 : 1,
           ),
         ),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+        child: Row(
           children: [
-            // Color swatch: two circles on a bg square
-            Container(
-              width: 36,
-              height: 36,
-              decoration: BoxDecoration(
-                color: backgroundColor,
-                borderRadius: BorderRadius.circular(6),
-                border: Border.all(
-                  color: Colors.white.withValues(alpha: 0.1),
-                  width: 0.5,
+            // Number
+            SizedBox(
+              width: 24,
+              child: Text(
+                '$index',
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.bold,
+                  fontFamily: 'monospace',
+                  color: Colors.white.withValues(alpha: 0.7),
                 ),
               ),
-              child: Stack(
-                alignment: Alignment.center,
-                children: [
-                  Positioned(
-                    left: 6,
-                    child: Container(
-                      width: 16,
-                      height: 16,
-                      decoration: BoxDecoration(
-                        color: primaryColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
+            ),
+            // 6 color dots
+            for (int i = 0; i < colors.length; i++) ...[
+              if (i > 0) const SizedBox(width: 6),
+              Container(
+                width: 20,
+                height: 20,
+                decoration: BoxDecoration(
+                  color: colors[i],
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                    width: 0.5,
                   ),
-                  Positioned(
-                    right: 6,
-                    child: Container(
-                      width: 12,
-                      height: 12,
-                      decoration: BoxDecoration(
-                        color: secondaryColor,
-                        shape: BoxShape.circle,
-                      ),
-                    ),
-                  ),
-                  if (isSelected)
-                    const Icon(
-                      Icons.check_rounded,
-                      size: 14,
-                      color: Colors.white,
-                    ),
-                ],
+                ),
+              ),
+            ],
+            const SizedBox(width: 10),
+            // Name
+            Expanded(
+              child: Text(
+                name,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w500,
+                  color: isSelected
+                      ? Colors.white
+                      : Colors.white.withValues(alpha: 0.6),
+                ),
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 9,
-                fontWeight: isSelected ? FontWeight.w600 : FontWeight.w400,
-                color: isSelected
-                    ? Colors.white
-                    : Colors.white.withValues(alpha: 0.5),
+            // Checkmark
+            if (isSelected)
+              Icon(
+                Icons.check_rounded,
+                size: 16,
+                color: Colors.white.withValues(alpha: 0.9),
               ),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              textAlign: TextAlign.center,
-            ),
           ],
         ),
       ),
