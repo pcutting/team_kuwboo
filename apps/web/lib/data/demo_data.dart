@@ -490,9 +490,9 @@ extension DemoDataExtended on DemoData {
       author: 'Jordan Lee',
       text: 'Golden hour at the pier was absolutely unreal today. Sometimes you just have to stop and take it all in.',
       imageUrls: [
-        'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=400&h=300&fit=crop',
-        'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=400&h=300&fit=crop',
-        'https://images.unsplash.com/photo-1476673160081-cf065607f449?w=400&h=300&fit=crop',
+        'https://images.unsplash.com/photo-1507525428034-b723cf961d3e?w=600&h=450&fit=crop',
+        'https://images.unsplash.com/photo-1519046904884-53103b34b206?w=600&h=450&fit=crop',
+        'https://images.unsplash.com/photo-1476673160081-cf065607f449?w=600&h=450&fit=crop',
       ],
       reactions: 47,
       comments: 12,
@@ -520,7 +520,7 @@ extension DemoDataExtended on DemoData {
     DemoPost(
       author: 'Sam Torres',
       text: 'Just tried the new ramen place on 5th. The tonkotsu broth is life-changing.',
-      imageUrl: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=400&h=300&fit=crop',
+      imageUrl: 'https://images.unsplash.com/photo-1569718212165-3a8278d5f624?w=600&h=450&fit=crop',
       reactions: 89,
       comments: 18,
       timeAgo: '6h ago',

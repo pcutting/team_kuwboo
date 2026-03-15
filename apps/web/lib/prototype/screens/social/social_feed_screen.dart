@@ -19,45 +19,6 @@ class SocialFeedScreen extends StatefulWidget {
 }
 
 class _SocialFeedScreenState extends State<SocialFeedScreen> {
-  int _storyVariant = 0; // 0-4
-  ValueNotifier<int>? _variantCount;
-  ValueNotifier<int>? _variantIndex;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    final provider = PrototypeStateProvider.maybeOf(context);
-    if (provider != null && _variantIndex == null) {
-      _variantCount = provider.screenVariantCount;
-      _variantIndex = provider.screenVariantIndex;
-      _storyVariant = _variantIndex!.value.clamp(0, 4);
-      _variantIndex!.addListener(_onExternalVariantChange);
-      // Defer count registration to run after any pending dispose from previous screen
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _variantCount!.value = 5;
-      });
-    }
-  }
-
-  void _onExternalVariantChange() {
-    final idx = _variantIndex?.value ?? 0;
-    if (idx != _storyVariant && idx >= 0 && idx < 5) {
-      setState(() => _storyVariant = idx);
-    }
-  }
-
-  @override
-  void dispose() {
-    _variantIndex?.removeListener(_onExternalVariantChange);
-    _variantCount?.value = 0;
-    super.dispose();
-  }
-
-  void _setVariant(int v) {
-    setState(() => _storyVariant = v);
-    _variantIndex?.value = v;
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = PrototypeStateProvider.of(context);
@@ -68,11 +29,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       showTopBar: false,
       body: Column(
         children: [
-          // Custom top bar with variant toggles
-          _SocialTopBar(
-            activeVariant: _storyVariant,
-            onVariantChanged: _setVariant,
-          ),
+          const _SocialTopBar(),
 
           Expanded(
             child: Stack(
@@ -174,33 +131,14 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 
   Widget _buildStoriesRow(BuildContext context, PrototypeStateProvider state, ProtoTheme theme) {
-    switch (_storyVariant) {
-      case 0:
-        return _StoriesRowThumbnail(state: state, theme: theme);
-      case 1:
-        return _StoriesRowThumbnail(state: state, theme: theme, bgColor: Colors.white);
-      case 2:
-        return _StoriesRowThumbnail(state: state, theme: theme, bgColor: Colors.black);
-      case 3:
-        return _StoriesRowCard(state: state, theme: theme);
-      case 4:
-        return _StoriesRowCard(state: state, theme: theme, darkCards: true);
-      default:
-        return _StoriesRowThumbnail(state: state, theme: theme);
-    }
+    return _StoriesRowCard(state: state, theme: theme);
   }
 }
 
 // ─── Custom top bar with variant toggle buttons ────────────────────────────
 
 class _SocialTopBar extends StatelessWidget {
-  final int activeVariant;
-  final ValueChanged<int> onVariantChanged;
-
-  const _SocialTopBar({
-    required this.activeVariant,
-    required this.onVariantChanged,
-  });
+  const _SocialTopBar();
 
   @override
   Widget build(BuildContext context) {
@@ -248,40 +186,6 @@ class _SocialTopBar extends StatelessWidget {
               color: theme.text,
             ),
           ),
-
-          const SizedBox(width: 8),
-
-          // Variant toggle buttons (temporary)
-          for (int i = 0; i < 5; i++) ...[
-            GestureDetector(
-              onTap: () => onVariantChanged(i),
-              child: Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: i == activeVariant ? theme.primary : theme.background,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: i == activeVariant
-                        ? theme.primary
-                        : theme.textTertiary.withValues(alpha: 0.4),
-                    width: 1,
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    '${i + 1}',
-                    style: theme.caption.copyWith(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: i == activeVariant ? Colors.white : theme.textTertiary,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            if (i < 4) const SizedBox(width: 4),
-          ],
 
           const Spacer(),
 
@@ -755,11 +659,13 @@ class _PostCardState extends State<_PostCard> {
                 onPageChanged: (i) => setState(() => _currentImage = i),
               )
             else
-              ProtoNetworkImage(
-                imageUrl: allImages.first,
-                height: 160,
-                width: double.infinity,
-                borderRadius: BorderRadius.circular(theme.radiusMd),
+              AspectRatio(
+                aspectRatio: 4 / 3,
+                child: ProtoNetworkImage(
+                  imageUrl: allImages.first,
+                  width: double.infinity,
+                  borderRadius: BorderRadius.circular(theme.radiusMd),
+                ),
               ),
           ],
 
@@ -993,7 +899,7 @@ class _ImageCarousel extends StatelessWidget {
     return Column(
       children: [
         SizedBox(
-          height: 160,
+          height: 280,
           child: PageView.builder(
             itemCount: images.length,
             onPageChanged: onPageChanged,
