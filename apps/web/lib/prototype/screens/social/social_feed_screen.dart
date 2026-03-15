@@ -8,6 +8,7 @@ import '../../prototype_demo_data.dart';
 import '../../shared/proto_scaffold.dart';
 import '../../shared/proto_press_button.dart';
 import '../../shared/proto_dialogs.dart';
+import '../../shared/proto_media.dart';
 import '../sponsored/sponsored_inline.dart';
 import '../../shared/proto_states.dart';
 
@@ -19,43 +20,24 @@ class SocialFeedScreen extends StatefulWidget {
 }
 
 class _SocialFeedScreenState extends State<SocialFeedScreen> {
-  int _storyVariant = 0; // 0-4
   ValueNotifier<int>? _variantCount;
-  ValueNotifier<int>? _variantIndex;
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    final provider = PrototypeStateProvider.maybeOf(context);
-    if (provider != null && _variantIndex == null) {
-      _variantCount = provider.screenVariantCount;
-      _variantIndex = provider.screenVariantIndex;
-      _storyVariant = _variantIndex!.value.clamp(0, 4);
-      _variantIndex!.addListener(_onExternalVariantChange);
-      // Defer count registration to run after any pending dispose from previous screen
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _variantCount!.value = 5;
-      });
-    }
-  }
-
-  void _onExternalVariantChange() {
-    final idx = _variantIndex?.value ?? 0;
-    if (idx != _storyVariant && idx >= 0 && idx < 5) {
-      setState(() => _storyVariant = idx);
+    if (_variantCount == null) {
+      final provider = PrototypeStateProvider.maybeOf(context);
+      if (provider != null) {
+        _variantCount = provider.screenVariantCount;
+        _variantCount!.value = 0;
+      }
     }
   }
 
   @override
   void dispose() {
-    _variantIndex?.removeListener(_onExternalVariantChange);
     _variantCount?.value = 0;
     super.dispose();
-  }
-
-  void _setVariant(int v) {
-    setState(() => _storyVariant = v);
-    _variantIndex?.value = v;
   }
 
   @override
@@ -68,11 +50,7 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
       showTopBar: false,
       body: Column(
         children: [
-          // Custom top bar with variant toggles
-          _SocialTopBar(
-            activeVariant: _storyVariant,
-            onVariantChanged: _setVariant,
-          ),
+          const _SocialTopBar(),
 
           Expanded(
             child: Stack(
@@ -133,7 +111,11 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                       }
                       final postIndex = i < 2 ? i : i - 1;
                       if (postIndex >= DemoDataExtended.posts.length) return const SizedBox.shrink();
-                      return _PostCard(post: DemoDataExtended.posts[postIndex]);
+                      final post = DemoDataExtended.posts[postIndex];
+                      return _PostCard(
+                        post: post,
+                        onTap: () => state.pushWithArgs(ProtoRoutes.socialPostDetail, post),
+                      );
                     }),
 
                     // Bottom spacing for FAB
@@ -174,33 +156,14 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
   }
 
   Widget _buildStoriesRow(BuildContext context, PrototypeStateProvider state, ProtoTheme theme) {
-    switch (_storyVariant) {
-      case 0:
-        return _StoriesRowThumbnail(state: state, theme: theme);
-      case 1:
-        return _StoriesRowThumbnail(state: state, theme: theme, bgColor: Colors.white);
-      case 2:
-        return _StoriesRowThumbnail(state: state, theme: theme, bgColor: Colors.black);
-      case 3:
-        return _StoriesRowCard(state: state, theme: theme);
-      case 4:
-        return _StoriesRowCard(state: state, theme: theme, darkCards: true);
-      default:
-        return _StoriesRowThumbnail(state: state, theme: theme);
-    }
+    return _StoriesRowCard(state: state, theme: theme);
   }
 }
 
 // ─── Custom top bar with variant toggle buttons ────────────────────────────
 
 class _SocialTopBar extends StatelessWidget {
-  final int activeVariant;
-  final ValueChanged<int> onVariantChanged;
-
-  const _SocialTopBar({
-    required this.activeVariant,
-    required this.onVariantChanged,
-  });
+  const _SocialTopBar();
 
   @override
   Widget build(BuildContext context) {
@@ -248,40 +211,6 @@ class _SocialTopBar extends StatelessWidget {
               color: theme.text,
             ),
           ),
-
-          const SizedBox(width: 8),
-
-          // Variant toggle buttons (temporary)
-          for (int i = 0; i < 5; i++) ...[
-            GestureDetector(
-              onTap: () => onVariantChanged(i),
-              child: Container(
-                width: 22,
-                height: 22,
-                decoration: BoxDecoration(
-                  color: i == activeVariant ? theme.primary : theme.background,
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: i == activeVariant
-                        ? theme.primary
-                        : theme.textTertiary.withValues(alpha: 0.4),
-                    width: 1,
-                  ),
-                ),
-                child: Center(
-                  child: Text(
-                    '${i + 1}',
-                    style: theme.caption.copyWith(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: i == activeVariant ? Colors.white : theme.textTertiary,
-                    ),
-                  ),
-                ),
-              ),
-            ),
-            if (i < 4) const SizedBox(width: 4),
-          ],
 
           const Spacer(),
 
@@ -658,7 +587,8 @@ class _TabChip extends StatelessWidget {
 
 class _PostCard extends StatefulWidget {
   final DemoPost post;
-  const _PostCard({required this.post});
+  final VoidCallback? onTap;
+  const _PostCard({required this.post, this.onTap});
 
   @override
   State<_PostCard> createState() => _PostCardState();
@@ -673,11 +603,11 @@ class _PostCardState extends State<_PostCard> {
     final theme = ProtoTheme.of(context);
     final post = widget.post;
     final likeCount = post.reactions + (_isLiked ? 1 : 0);
-    final allImages = post.imageUrls.isNotEmpty
-        ? post.imageUrls
-        : (post.imageUrl != null ? [post.imageUrl!] : <String>[]);
 
-    return Container(
+    return GestureDetector(
+      onTap: widget.onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       padding: const EdgeInsets.all(14),
       decoration: theme.cardDecoration,
@@ -744,23 +674,18 @@ class _PostCardState extends State<_PostCard> {
             ),
           ],
 
-          // Image carousel or single image
-          if (allImages.isNotEmpty) ...[
+          // Media: single item at natural ratio, or carousel locked to first item's ratio
+          if (post.media.isNotEmpty) ...[
             const SizedBox(height: 10),
-            if (allImages.length > 1)
-              _ImageCarousel(
-                images: allImages,
+            if (post.media.length > 1)
+              ProtoMediaCarousel(
+                items: post.media,
                 theme: theme,
                 currentIndex: _currentImage,
                 onPageChanged: (i) => setState(() => _currentImage = i),
               )
             else
-              ProtoNetworkImage(
-                imageUrl: allImages.first,
-                height: 160,
-                width: double.infinity,
-                borderRadius: BorderRadius.circular(theme.radiusMd),
-              ),
+              ProtoSingleMedia(item: post.media.first, theme: theme),
           ],
 
           const SizedBox(height: 10),
@@ -811,6 +736,7 @@ class _PostCardState extends State<_PostCard> {
             ],
           ),
         ],
+      ),
       ),
     );
   }
@@ -975,56 +901,3 @@ class _VideoRepostEmbed extends StatelessWidget {
   }
 }
 
-class _ImageCarousel extends StatelessWidget {
-  final List<String> images;
-  final ProtoTheme theme;
-  final int currentIndex;
-  final ValueChanged<int> onPageChanged;
-
-  const _ImageCarousel({
-    required this.images,
-    required this.theme,
-    required this.currentIndex,
-    required this.onPageChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 160,
-          child: PageView.builder(
-            itemCount: images.length,
-            onPageChanged: onPageChanged,
-            itemBuilder: (context, i) {
-              return ProtoNetworkImage(
-                imageUrl: images[i],
-                width: double.infinity,
-                borderRadius: BorderRadius.circular(theme.radiusMd),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 8),
-        // Dot indicators
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(images.length, (i) {
-            final isActive = i == currentIndex;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: isActive ? 16 : 6,
-              height: 6,
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              decoration: BoxDecoration(
-                color: isActive ? theme.primary : theme.textTertiary.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(3),
-              ),
-            );
-          }),
-        ),
-      ],
-    );
-  }
-}
