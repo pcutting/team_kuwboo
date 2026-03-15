@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../data/demo_data.dart';
 import 'proto_transitions.dart';
 
 // Screen imports — home screens
@@ -30,6 +31,7 @@ import 'screens/social/social_composer_screen.dart';
 import 'screens/social/social_story_viewer.dart';
 import 'screens/social/social_friends_list.dart';
 import 'screens/social/social_events_screen.dart';
+import 'screens/social/social_post_detail.dart';
 
 // Shop sub-screens
 import 'screens/shop/shop_product_detail.dart';
@@ -108,6 +110,7 @@ class ProtoRoutes {
   static const socialStory = '/social/story';
   static const socialFriends = '/social/friends';
   static const socialEvents = '/social/events';
+  static const socialPostDetail = '/social/post-detail';
 
   // Shop
   static const shopProduct = '/shop/product';
@@ -217,6 +220,9 @@ Route<dynamic> generateRoute(RouteSettings settings) {
       return instant(const SocialFriendsList(), name: settings.name);
     case ProtoRoutes.socialEvents:
       return instant(const SocialEventsScreen(), name: settings.name);
+    case ProtoRoutes.socialPostDetail:
+      final post = settings.arguments as DemoPost;
+      return slideRight(SocialPostDetail(post: post), name: settings.name);
 
     // ── Shop sub-screens ──
     case ProtoRoutes.shopProduct:

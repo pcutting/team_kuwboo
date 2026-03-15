@@ -8,6 +8,7 @@ import '../../prototype_demo_data.dart';
 import '../../shared/proto_scaffold.dart';
 import '../../shared/proto_press_button.dart';
 import '../../shared/proto_dialogs.dart';
+import '../../shared/proto_media.dart';
 import '../sponsored/sponsored_inline.dart';
 import '../../shared/proto_states.dart';
 
@@ -19,6 +20,26 @@ class SocialFeedScreen extends StatefulWidget {
 }
 
 class _SocialFeedScreenState extends State<SocialFeedScreen> {
+  ValueNotifier<int>? _variantCount;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (_variantCount == null) {
+      final provider = PrototypeStateProvider.maybeOf(context);
+      if (provider != null) {
+        _variantCount = provider.screenVariantCount;
+        _variantCount!.value = 0;
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _variantCount?.value = 0;
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = PrototypeStateProvider.of(context);
@@ -90,7 +111,11 @@ class _SocialFeedScreenState extends State<SocialFeedScreen> {
                       }
                       final postIndex = i < 2 ? i : i - 1;
                       if (postIndex >= DemoDataExtended.posts.length) return const SizedBox.shrink();
-                      return _PostCard(post: DemoDataExtended.posts[postIndex]);
+                      final post = DemoDataExtended.posts[postIndex];
+                      return _PostCard(
+                        post: post,
+                        onTap: () => state.pushWithArgs(ProtoRoutes.socialPostDetail, post),
+                      );
                     }),
 
                     // Bottom spacing for FAB
@@ -562,7 +587,8 @@ class _TabChip extends StatelessWidget {
 
 class _PostCard extends StatefulWidget {
   final DemoPost post;
-  const _PostCard({required this.post});
+  final VoidCallback? onTap;
+  const _PostCard({required this.post, this.onTap});
 
   @override
   State<_PostCard> createState() => _PostCardState();
@@ -577,11 +603,11 @@ class _PostCardState extends State<_PostCard> {
     final theme = ProtoTheme.of(context);
     final post = widget.post;
     final likeCount = post.reactions + (_isLiked ? 1 : 0);
-    final allImages = post.imageUrls.isNotEmpty
-        ? post.imageUrls
-        : (post.imageUrl != null ? [post.imageUrl!] : <String>[]);
 
-    return Container(
+    return GestureDetector(
+      onTap: widget.onTap,
+      behavior: HitTestBehavior.opaque,
+      child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       padding: const EdgeInsets.all(14),
       decoration: theme.cardDecoration,
@@ -648,25 +674,18 @@ class _PostCardState extends State<_PostCard> {
             ),
           ],
 
-          // Image carousel or single image
-          if (allImages.isNotEmpty) ...[
+          // Media: single item at natural ratio, or carousel locked to first item's ratio
+          if (post.media.isNotEmpty) ...[
             const SizedBox(height: 10),
-            if (allImages.length > 1)
-              _ImageCarousel(
-                images: allImages,
+            if (post.media.length > 1)
+              ProtoMediaCarousel(
+                items: post.media,
                 theme: theme,
                 currentIndex: _currentImage,
                 onPageChanged: (i) => setState(() => _currentImage = i),
               )
             else
-              AspectRatio(
-                aspectRatio: 4 / 3,
-                child: ProtoNetworkImage(
-                  imageUrl: allImages.first,
-                  width: double.infinity,
-                  borderRadius: BorderRadius.circular(theme.radiusMd),
-                ),
-              ),
+              ProtoSingleMedia(item: post.media.first, theme: theme),
           ],
 
           const SizedBox(height: 10),
@@ -717,6 +736,7 @@ class _PostCardState extends State<_PostCard> {
             ],
           ),
         ],
+      ),
       ),
     );
   }
@@ -881,56 +901,3 @@ class _VideoRepostEmbed extends StatelessWidget {
   }
 }
 
-class _ImageCarousel extends StatelessWidget {
-  final List<String> images;
-  final ProtoTheme theme;
-  final int currentIndex;
-  final ValueChanged<int> onPageChanged;
-
-  const _ImageCarousel({
-    required this.images,
-    required this.theme,
-    required this.currentIndex,
-    required this.onPageChanged,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: [
-        SizedBox(
-          height: 280,
-          child: PageView.builder(
-            itemCount: images.length,
-            onPageChanged: onPageChanged,
-            itemBuilder: (context, i) {
-              return ProtoNetworkImage(
-                imageUrl: images[i],
-                width: double.infinity,
-                borderRadius: BorderRadius.circular(theme.radiusMd),
-              );
-            },
-          ),
-        ),
-        const SizedBox(height: 8),
-        // Dot indicators
-        Row(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: List.generate(images.length, (i) {
-            final isActive = i == currentIndex;
-            return AnimatedContainer(
-              duration: const Duration(milliseconds: 200),
-              width: isActive ? 16 : 6,
-              height: 6,
-              margin: const EdgeInsets.symmetric(horizontal: 2),
-              decoration: BoxDecoration(
-                color: isActive ? theme.primary : theme.textTertiary.withValues(alpha: 0.3),
-                borderRadius: BorderRadius.circular(3),
-              ),
-            );
-          }),
-        ),
-      ],
-    );
-  }
-}
