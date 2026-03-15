@@ -9,15 +9,16 @@ import '../../data/demo_data.dart';
 class ProtoSingleMedia extends StatelessWidget {
   final DemoMediaItem item;
   final ProtoTheme theme;
+  final BorderRadius? borderRadius;
 
-  const ProtoSingleMedia({super.key, required this.item, required this.theme});
+  const ProtoSingleMedia({super.key, required this.item, required this.theme, this.borderRadius});
 
   @override
   Widget build(BuildContext context) {
     return AspectRatio(
       aspectRatio: item.clampedRatio,
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(theme.radiusMd),
+        borderRadius: borderRadius ?? BorderRadius.circular(theme.radiusMd),
         child: Stack(
           fit: StackFit.expand,
           children: [
@@ -87,6 +88,7 @@ class ProtoMediaCarousel extends StatelessWidget {
   final ProtoTheme theme;
   final int currentIndex;
   final ValueChanged<int> onPageChanged;
+  final BorderRadius? borderRadius;
 
   const ProtoMediaCarousel({
     super.key,
@@ -94,6 +96,7 @@ class ProtoMediaCarousel extends StatelessWidget {
     required this.theme,
     required this.currentIndex,
     required this.onPageChanged,
+    this.borderRadius,
   });
 
   @override
@@ -103,7 +106,7 @@ class ProtoMediaCarousel extends StatelessWidget {
         AspectRatio(
           aspectRatio: items.first.clampedRatio,
           child: ClipRRect(
-            borderRadius: BorderRadius.circular(theme.radiusMd),
+            borderRadius: borderRadius ?? BorderRadius.circular(theme.radiusMd),
             child: PageView.builder(
               itemCount: items.length,
               onPageChanged: onPageChanged,

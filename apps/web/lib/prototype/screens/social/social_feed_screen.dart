@@ -604,77 +604,92 @@ class _PostCardState extends State<_PostCard> {
     final post = widget.post;
     final likeCount = post.reactions + (_isLiked ? 1 : 0);
 
+    const hp = EdgeInsets.symmetric(horizontal: 14);
+
     return GestureDetector(
       onTap: widget.onTap,
       behavior: HitTestBehavior.opaque,
       child: Container(
       margin: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      padding: const EdgeInsets.all(14),
       decoration: theme.cardDecoration,
+      clipBehavior: Clip.antiAlias,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
+          const SizedBox(height: 14),
           // Author row
-          Row(
-            children: [
-              ProtoAvatar(radius: 18, imageUrl: post.avatarUrl),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(post.author, style: theme.title.copyWith(fontSize: 14)),
-                    Text(post.timeAgo, style: theme.caption),
-                  ],
+          Padding(
+            padding: hp,
+            child: Row(
+              children: [
+                ProtoAvatar(radius: 18, imageUrl: post.avatarUrl),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(post.author, style: theme.title.copyWith(fontSize: 14)),
+                      Text(post.timeAgo, style: theme.caption),
+                    ],
+                  ),
                 ),
-              ),
-              Icon(theme.icons.moreHoriz, size: 20, color: theme.textTertiary),
-            ],
+                Icon(theme.icons.moreHoriz, size: 20, color: theme.textTertiary),
+              ],
+            ),
           ),
           const SizedBox(height: 10),
-          Text(post.text, style: theme.body),
+          Padding(
+            padding: hp,
+            child: Text(post.text, style: theme.body),
+          ),
 
           // Video repost embed card
           if (post.repostVideoCreator != null) ...[
             const SizedBox(height: 10),
-            _VideoRepostEmbed(
-              creator: post.repostVideoCreator!,
-              caption: post.repostVideoCaption ?? '',
-              gradientIndex: post.repostVideoIndex ?? 0,
+            Padding(
+              padding: hp,
+              child: _VideoRepostEmbed(
+                creator: post.repostVideoCreator!,
+                caption: post.repostVideoCaption ?? '',
+                gradientIndex: post.repostVideoIndex ?? 0,
+              ),
             ),
           ],
 
           // Text repost card (embedded original post)
           if (post.repostAuthor != null && post.repostVideoCreator == null) ...[
             const SizedBox(height: 10),
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color: theme.background,
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: theme.text.withValues(alpha: 0.08)),
-              ),
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Icon(Icons.repeat_rounded, size: 16, color: theme.textTertiary),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(post.repostAuthor!, style: theme.title.copyWith(fontSize: 12)),
-                        const SizedBox(height: 2),
-                        Text(post.repostText ?? '', style: theme.body.copyWith(fontSize: 13), maxLines: 3, overflow: TextOverflow.ellipsis),
-                      ],
+            Padding(
+              padding: hp,
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: theme.background,
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: theme.text.withValues(alpha: 0.08)),
+                ),
+                child: Row(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Icon(Icons.repeat_rounded, size: 16, color: theme.textTertiary),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(post.repostAuthor!, style: theme.title.copyWith(fontSize: 12)),
+                          const SizedBox(height: 2),
+                          Text(post.repostText ?? '', style: theme.body.copyWith(fontSize: 13), maxLines: 3, overflow: TextOverflow.ellipsis),
+                        ],
+                      ),
                     ),
-                  ),
-                ],
+                  ],
+                ),
               ),
             ),
           ],
 
-          // Media: single item at natural ratio, or carousel locked to first item's ratio
+          // Media: edge-to-edge within the card
           if (post.media.isNotEmpty) ...[
             const SizedBox(height: 10),
             if (post.media.length > 1)
@@ -683,58 +698,63 @@ class _PostCardState extends State<_PostCard> {
                 theme: theme,
                 currentIndex: _currentImage,
                 onPageChanged: (i) => setState(() => _currentImage = i),
+                borderRadius: BorderRadius.zero,
               )
             else
-              ProtoSingleMedia(item: post.media.first, theme: theme),
+              ProtoSingleMedia(item: post.media.first, theme: theme, borderRadius: BorderRadius.zero),
           ],
 
           const SizedBox(height: 10),
           // Action row: like, comment, repost, share
-          Row(
-            children: [
-              // Like button (interactive)
-              ProtoPressButton(
-                onTap: () => setState(() => _isLiked = !_isLiked),
-                child: Row(
-                  children: [
-                    Icon(
-                      _isLiked ? theme.icons.favoriteFilled : theme.icons.favoriteOutline,
-                      size: 20,
-                      color: _isLiked ? theme.accent : theme.textTertiary,
-                    ),
-                    const SizedBox(width: 6),
-                    Text('$likeCount', style: theme.caption.copyWith(
-                      color: _isLiked ? theme.accent : theme.textTertiary,
-                    )),
-                  ],
+          Padding(
+            padding: hp,
+            child: Row(
+              children: [
+                // Like button (interactive)
+                ProtoPressButton(
+                  onTap: () => setState(() => _isLiked = !_isLiked),
+                  child: Row(
+                    children: [
+                      Icon(
+                        _isLiked ? theme.icons.favoriteFilled : theme.icons.favoriteOutline,
+                        size: 20,
+                        color: _isLiked ? theme.accent : theme.textTertiary,
+                      ),
+                      const SizedBox(width: 6),
+                      Text('$likeCount', style: theme.caption.copyWith(
+                        color: _isLiked ? theme.accent : theme.textTertiary,
+                      )),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 20),
-              // Comment
-              ProtoPressButton(
-                onTap: () => ProtoToast.show(context, theme.icons.chatBubbleOutline, 'Comments'),
-                child: Row(
-                  children: [
-                    Icon(theme.icons.chatBubbleOutline, size: 18, color: theme.textTertiary),
-                    const SizedBox(width: 6),
-                    Text('${post.comments}', style: theme.caption),
-                  ],
+                const SizedBox(width: 20),
+                // Comment
+                ProtoPressButton(
+                  onTap: () => ProtoToast.show(context, theme.icons.chatBubbleOutline, 'Comments'),
+                  child: Row(
+                    children: [
+                      Icon(theme.icons.chatBubbleOutline, size: 18, color: theme.textTertiary),
+                      const SizedBox(width: 6),
+                      Text('${post.comments}', style: theme.caption),
+                    ],
+                  ),
                 ),
-              ),
-              const SizedBox(width: 20),
-              // Repost
-              ProtoPressButton(
-                onTap: () => ProtoToast.show(context, Icons.repeat_rounded, 'Reposted'),
-                child: Icon(Icons.repeat_rounded, size: 18, color: theme.textTertiary),
-              ),
-              const Spacer(),
-              // Share
-              ProtoPressButton(
-                onTap: () => ProtoShareSheet.show(context),
-                child: Icon(theme.icons.share, size: 18, color: theme.textTertiary),
-              ),
-            ],
+                const SizedBox(width: 20),
+                // Repost
+                ProtoPressButton(
+                  onTap: () => ProtoToast.show(context, Icons.repeat_rounded, 'Reposted'),
+                  child: Icon(Icons.repeat_rounded, size: 18, color: theme.textTertiary),
+                ),
+                const Spacer(),
+                // Share
+                ProtoPressButton(
+                  onTap: () => ProtoShareSheet.show(context),
+                  child: Icon(theme.icons.share, size: 18, color: theme.textTertiary),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(height: 14),
         ],
       ),
       ),
