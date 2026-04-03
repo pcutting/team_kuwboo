@@ -19,6 +19,10 @@ import { RolesGuard } from './common/guards/roles.guard';
 import { HealthModule } from './modules/health/health.module';
 import { UsersModule } from './modules/users/users.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { DevicesModule } from './modules/devices/devices.module';
+import { MediaModule } from './modules/media/media.module';
+import { NotificationsModule } from './modules/notifications/notifications.module';
+import { ConsentModule } from './modules/consent/consent.module';
 
 @Module({
   imports: [
@@ -63,6 +67,10 @@ import { AuthModule } from './modules/auth/auth.module';
     HealthModule,
     UsersModule,
     AuthModule,
+    DevicesModule,
+    MediaModule,
+    NotificationsModule,
+    ConsentModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
