@@ -5,7 +5,7 @@ import {
   OneToOne,
   OptionalProps,
 } from '@mikro-orm/core';
-import { v4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { User } from './user.entity';
 
 export interface NotificationPreferences {
@@ -28,7 +28,7 @@ export class UserPreferences {
   [OptionalProps]?: 'notifications' | 'privacy' | 'createdAt' | 'updatedAt';
 
   @PrimaryKey({ type: 'uuid' })
-  id: string = v4();
+  id: string = randomUUID();
 
   @OneToOne(() => User, { owner: true, unique: true })
   user!: User;
