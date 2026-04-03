@@ -8,7 +8,7 @@ import {
   Index,
   OptionalProps,
 } from '@mikro-orm/core';
-import { v4 } from 'uuid';
+import { randomUUID } from 'crypto';
 import { Role, UserStatus, OnlineStatus } from '../../../common/enums';
 import { PointType, Point } from '../../../database/types/point.type';
 import { UserPreferences } from './user-preferences.entity';
@@ -25,7 +25,7 @@ export class User {
     | 'updatedAt';
 
   @PrimaryKey({ type: 'uuid' })
-  id: string = v4();
+  id: string = randomUUID();
 
   @Property({ type: 'varchar', length: 20, nullable: true, unique: true })
   phone?: string;

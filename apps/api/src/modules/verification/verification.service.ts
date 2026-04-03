@@ -1,0 +1,109 @@
+import { Injectable, BadRequestException, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
+import { EntityManager } from '@mikro-orm/postgresql';
+import * as bcrypt from 'bcrypt';
+import { Verification } from './entities/verification.entity';
+import { VerificationType } from '../../common/enums';
+
+const OTP_LENGTH = 6;
+const OTP_EXPIRY_MINUTES = 10;
+const MAX_ATTEMPTS = 5;
+const BCRYPT_ROUNDS = 10;
+
+@Injectable()
+export class VerificationService {
+  private readonly twilioClient: any;
+  private readonly verifySid: string;
+
+  constructor(
+    private readonly em: EntityManager,
+    private readonly config: ConfigService,
+  ) {
+    const accountSid = this.config.get<string>('TWILIO_ACCOUNT_SID');
+    const authToken = this.config.get<string>('TWILIO_AUTH_TOKEN');
+    this.verifySid = this.config.get<string>('TWILIO_VERIFY_SERVICE_SID') || '';
+
+    if (accountSid && authToken) {
+      // eslint-disable-next-line @typescript-eslint/no-var-requires
+      const twilio = require('twilio');
+      this.twilioClient = twilio(accountSid, authToken);
+    }
+  }
+
+  async sendPhoneOtp(phone: string): Promise<void> {
+    if (this.twilioClient && this.verifySid) {
+      await this.twilioClient.verify.v2
+        .services(this.verifySid)
+        .verifications.create({ to: phone, channel: 'sms' });
+      return;
+    }
+
+    // Local dev fallback: store a hashed code
+    const code = this.generateCode();
+    const codeHash = await bcrypt.hash(code, BCRYPT_ROUNDS);
+    const expiresAt = new Date();
+    expiresAt.setMinutes(expiresAt.getMinutes() + OTP_EXPIRY_MINUTES);
+
+    const verification = this.em.create(Verification, {
+      identifier: phone,
+      codeHash,
+      type: VerificationType.PHONE_OTP,
+      expiresAt,
+    } as any);
+
+    await this.em.flush();
+
+    // Log code in development only
+    if (this.config.get('NODE_ENV') === 'development') {
+      console.log(`[DEV] OTP for ${phone}: ${code}`);
+    }
+  }
+
+  async verifyPhoneOtp(phone: string, code: string): Promise<boolean> {
+    if (this.twilioClient && this.verifySid) {
+      const check = await this.twilioClient.verify.v2
+        .services(this.verifySid)
+        .verificationChecks.create({ to: phone, code });
+      return check.status === 'approved';
+    }
+
+    // Local dev fallback: check stored code
+    const verification = await this.em.findOne(
+      Verification,
+      {
+        identifier: phone,
+        type: VerificationType.PHONE_OTP,
+        verifiedAt: null,
+        expiresAt: { $gt: new Date() },
+      },
+      { orderBy: { createdAt: 'DESC' } },
+    );
+
+    if (!verification) {
+      throw new BadRequestException('No pending verification found');
+    }
+
+    if (verification.attempts >= MAX_ATTEMPTS) {
+      throw new UnauthorizedException('Too many attempts. Request a new code.');
+    }
+
+    verification.attempts++;
+
+    const isValid = await bcrypt.compare(code, verification.codeHash);
+    if (isValid) {
+      verification.verifiedAt = new Date();
+    }
+
+    await this.em.flush();
+
+    if (!isValid) {
+      throw new UnauthorizedException('Invalid code');
+    }
+
+    return true;
+  }
+
+  private generateCode(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+}
