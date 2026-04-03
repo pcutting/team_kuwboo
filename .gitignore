@@ -26,3 +26,7 @@ coverage/
 .flutter-plugins-dependencies
 .dart_tool/
 .vercel
+
+# Node.js (apps/api)
+apps/api/node_modules/
+apps/api/dist/
