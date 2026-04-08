@@ -5,12 +5,16 @@ import { DashboardPage } from './pages/DashboardPage';
 import { UsersPage } from './pages/UsersPage';
 import { UserDetailPage } from './pages/UserDetailPage';
 import { BotsPage } from './pages/BotsPage';
+import { BotDetailPage } from './pages/BotDetailPage';
 import { ContentPage } from './pages/ContentPage';
 import { ReportsPage } from './pages/ReportsPage';
 import { MarketplacePage } from './pages/MarketplacePage';
 import { SponsoredPage } from './pages/SponsoredPage';
 import { BroadcastPage } from './pages/BroadcastPage';
 import { AuditLogPage } from './pages/AuditLogPage';
+import { AnalyticsPage } from './pages/AnalyticsPage';
+import { SessionsPage } from './pages/SessionsPage';
+import { SystemHealthPage } from './pages/SystemHealthPage';
 import { AdminLayout } from './components/AdminLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
 
@@ -35,11 +39,15 @@ export function App() {
         <Route path="users/:id" element={<UserDetailPage />} />
         <Route path="content" element={<ContentPage />} />
         <Route path="bots" element={<BotsPage />} />
+        <Route path="bots/:id" element={<BotDetailPage />} />
         <Route path="reports" element={<ReportsPage />} />
         <Route path="marketplace" element={<MarketplacePage />} />
         <Route path="sponsored" element={<SponsoredPage />} />
         <Route path="broadcast" element={<BroadcastPage />} />
         <Route path="audit-log" element={<AuditLogPage />} />
+        <Route path="analytics" element={<AnalyticsPage />} />
+        <Route path="sessions" element={<SessionsPage />} />
+        <Route path="system" element={<SystemHealthPage />} />
       </Route>
     </Routes>
   );

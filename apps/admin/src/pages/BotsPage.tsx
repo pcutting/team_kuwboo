@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { Link } from 'react-router';
 import { useAuth } from '../contexts/AuthContext';
 import { listBots } from '../api/client';
 
@@ -97,7 +98,12 @@ export function BotsPage() {
             {/* Info */}
             <div className="flex-1 min-w-0">
               <div className="flex items-center gap-2">
-                <p className="font-medium text-stone-900">{bot.user.name}</p>
+                <Link
+                  to={`/dashboard/bots/${bot.id}`}
+                  className="font-medium text-stone-900 hover:text-amber-700 transition-colors"
+                >
+                  {bot.user.name}
+                </Link>
                 <SimStatusBadge status={bot.simulationStatus} />
               </div>
               <p className="text-sm text-stone-500 mt-0.5">
