@@ -21,6 +21,7 @@ export class User {
     | 'role'
     | 'status'
     | 'onlineStatus'
+    | 'isBot'
     | 'createdAt'
     | 'updatedAt';
 
@@ -62,6 +63,10 @@ export class User {
 
   @Property({ type: 'varchar', length: 255, nullable: true, unique: true })
   appleId?: string;
+
+  @Property({ type: 'boolean', default: false })
+  @Index()
+  isBot: boolean = false;
 
   @OneToOne(() => UserPreferences, (prefs) => prefs.user, {
     nullable: true,

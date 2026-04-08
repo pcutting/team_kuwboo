@@ -31,6 +31,7 @@ export class YoyoService {
     lat: number,
     lng: number,
     radiusKm?: number,
+    excludeBots?: boolean,
   ): Promise<any[]> {
     // Get the caller's settings (or defaults)
     const settings = await this.getSettings(userId);
@@ -69,8 +70,13 @@ export class YoyoService {
       )
       .andWhere('ys.is_visible', true)
       .andWhere('u.deleted_at', null)
-      .whereNotIn('u.id', blockedIds)
-      .orderByRaw('distance ASC')
+      .whereNotIn('u.id', blockedIds);
+
+    if (excludeBots) {
+      query = query.andWhere('u.is_bot', false);
+    }
+
+    query = query.orderByRaw('distance ASC')
       .limit(50);
 
     // Apply age filters if set
