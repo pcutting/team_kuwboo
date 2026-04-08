@@ -33,6 +33,8 @@ import { FeedModule } from './modules/feed/feed.module';
 import { MessagingModule } from './modules/messaging/messaging.module';
 import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 import { SponsoredModule } from './modules/sponsored/sponsored.module';
+import { PresenceModule } from './modules/presence/presence.module';
+import { YoyoModule } from './modules/yoyo/yoyo.module';
 
 @Module({
   imports: [
@@ -95,6 +97,8 @@ import { SponsoredModule } from './modules/sponsored/sponsored.module';
     MessagingModule,
     MarketplaceModule,
     SponsoredModule,
+    PresenceModule,
+    YoyoModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },
