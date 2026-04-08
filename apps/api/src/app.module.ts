@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { APP_FILTER, APP_GUARD, APP_INTERCEPTOR } from '@nestjs/core';
 import { ThrottlerModule, ThrottlerGuard } from '@nestjs/throttler';
+import { BullModule } from '@nestjs/bullmq';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { UnderscoreNamingStrategy } from '@mikro-orm/core';
@@ -35,6 +36,7 @@ import { MarketplaceModule } from './modules/marketplace/marketplace.module';
 import { SponsoredModule } from './modules/sponsored/sponsored.module';
 import { PresenceModule } from './modules/presence/presence.module';
 import { YoyoModule } from './modules/yoyo/yoyo.module';
+import { BotsModule } from './modules/bots/bots.module';
 
 @Module({
   imports: [
@@ -80,6 +82,16 @@ import { YoyoModule } from './modules/yoyo/yoyo.module';
       },
     ]),
 
+    BullModule.forRootAsync({
+      inject: [ConfigService],
+      useFactory: (config: ConfigService) => ({
+        connection: {
+          host: config.get('redis.host'),
+          port: config.get('redis.port'),
+        },
+      }),
+    }),
+
     HealthModule,
     UsersModule,
     AuthModule,
@@ -99,6 +111,7 @@ import { YoyoModule } from './modules/yoyo/yoyo.module';
     SponsoredModule,
     PresenceModule,
     YoyoModule,
+    BotsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: HttpExceptionFilter },

@@ -29,12 +29,14 @@ export class AdminController {
     @Query('limit') limit?: string,
     @Query('status') status?: UserStatus,
     @Query('role') role?: Role,
+    @Query('isBot') isBot?: string,
   ) {
     return this.adminService.listUsers(
       page ? parseInt(page, 10) : 1,
       limit ? parseInt(limit, 10) : 20,
       status,
       role,
+      isBot !== undefined ? isBot === 'true' : undefined,
     );
   }
 

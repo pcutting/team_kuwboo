@@ -10,6 +10,7 @@ export interface FeedQuery {
   cursor?: string;
   limit?: number;
   userId: string;
+  excludeBots?: boolean;
 }
 
 export interface FeedResult {
@@ -45,6 +46,10 @@ export class FeedService {
 
     if (blockedIds.length > 0) {
       where.creator = { id: { $nin: blockedIds } };
+    }
+
+    if (query.excludeBots) {
+      where.creator = { ...where.creator, isBot: false };
     }
 
     if (query.cursor) {

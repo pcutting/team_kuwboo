@@ -14,10 +14,12 @@ export class AdminService {
     limit = 20,
     status?: UserStatus,
     role?: Role,
+    isBot?: boolean,
   ): Promise<{ items: User[]; total: number }> {
     const where: any = {};
     if (status) where.status = status;
     if (role) where.role = role;
+    if (isBot !== undefined) where.isBot = isBot;
 
     const [items, total] = await this.em.findAndCount(User, where, {
       orderBy: { createdAt: 'DESC' },
@@ -76,13 +78,15 @@ export class AdminService {
   }
 
   async getStats(): Promise<Record<string, number>> {
-    const [totalUsers, activeUsers, totalMedia, totalNotifications] = await Promise.all([
+    const [totalUsers, activeUsers, totalMedia, totalNotifications, totalBots, activeBots] = await Promise.all([
       this.em.count(User, {}),
       this.em.count(User, { status: UserStatus.ACTIVE }),
       this.em.count(Media, {}),
       this.em.count(Notification, {}),
+      this.em.count(User, { isBot: true }),
+      this.em.count(User, { isBot: true, status: UserStatus.ACTIVE }),
     ]);
 
-    return { totalUsers, activeUsers, totalMedia, totalNotifications };
+    return { totalUsers, activeUsers, totalMedia, totalNotifications, totalBots, activeBots };
   }
 }
