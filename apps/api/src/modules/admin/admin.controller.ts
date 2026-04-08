@@ -20,6 +20,9 @@ import { SuspendUserDto } from './dto/suspend-user.dto';
 import { WarnUserDto } from './dto/warn-user.dto';
 import { SearchUsersDto } from './dto/search-users.dto';
 import { EnforceReportDto } from './dto/enforce-report.dto';
+import { UpdateProductStatusDto } from './dto/update-product-status.dto';
+import { UpdateCampaignStatusDto } from './dto/update-campaign-status.dto';
+import { BroadcastNotificationDto } from './dto/broadcast-notification.dto';
 import { Roles } from '../../common/decorators/roles.decorator';
 import { CurrentUser } from '../../common/decorators/current-user.decorator';
 import { Role, UserStatus, ContentStatus, ContentType } from '../../common/enums';
@@ -290,5 +293,89 @@ export class AdminController {
   @Get('system/health')
   async getSystemHealth() {
     return this.adminService.getSystemHealth();
+  }
+
+  // --- Marketplace Moderation ---
+
+  @Get('marketplace/products')
+  async listProducts(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.adminService.listProducts(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 20,
+      status,
+    );
+  }
+
+  @Patch('marketplace/products/:id/status')
+  async updateProductStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateProductStatusDto,
+    @CurrentUser('id') adminUserId: string,
+  ) {
+    return this.adminService.updateProductStatus(id, dto.status, adminUserId);
+  }
+
+  @Get('marketplace/auctions')
+  async listAuctions(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.adminService.listAuctions(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 20,
+      status,
+    );
+  }
+
+  @Post('marketplace/auctions/:id/cancel')
+  async cancelAuction(
+    @Param('id', ParseUUIDPipe) id: string,
+    @CurrentUser('id') adminUserId: string,
+  ) {
+    return this.adminService.cancelAuction(id, adminUserId);
+  }
+
+  // --- Sponsored Campaign Management ---
+
+  @Get('sponsored/campaigns')
+  async listCampaigns(
+    @Query('page') page?: string,
+    @Query('limit') limit?: string,
+    @Query('status') status?: string,
+  ) {
+    return this.adminService.listCampaigns(
+      page ? parseInt(page, 10) : 1,
+      limit ? parseInt(limit, 10) : 20,
+      status,
+    );
+  }
+
+  @Patch('sponsored/campaigns/:id/status')
+  async updateCampaignStatus(
+    @Param('id', ParseUUIDPipe) id: string,
+    @Body() dto: UpdateCampaignStatusDto,
+    @CurrentUser('id') adminUserId: string,
+  ) {
+    return this.adminService.updateCampaignStatus(id, dto.status, adminUserId);
+  }
+
+  // --- Broadcast Notification ---
+
+  @Post('notifications/broadcast')
+  async broadcastNotification(
+    @Body() dto: BroadcastNotificationDto,
+    @CurrentUser('id') adminUserId: string,
+  ) {
+    return this.adminService.broadcastNotification(
+      dto.title,
+      dto.message,
+      adminUserId,
+      dto.targetRole,
+    );
   }
 }

@@ -6,11 +6,14 @@ import { User } from '../users/entities/user.entity';
 import { Media } from '../media/entities/media.entity';
 import { Notification } from '../notifications/entities/notification.entity';
 import { Content } from '../content/entities/content.entity';
+import { Product } from '../content/entities/product.entity';
 import { Comment } from '../comments/entities/comment.entity';
 import { Report } from '../reports/entities/report.entity';
 import { Connection } from '../connections/entities/connection.entity';
 import { Device } from '../devices/entities/device.entity';
-import { Role, UserStatus, ContentStatus, ContentType, ReportTargetType, NotificationType, ReportStatus } from '../../common/enums';
+import { Auction } from '../marketplace/entities/auction.entity';
+import { SponsoredCampaign } from '../sponsored/entities/sponsored-campaign.entity';
+import { Role, UserStatus, ContentStatus, ContentType, ReportTargetType, NotificationType, ReportStatus, AuctionStatus, CampaignStatus } from '../../common/enums';
 import { AdminAuditService } from './admin-audit.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { ContentService } from '../content/content.service';
@@ -520,5 +523,172 @@ export class AdminService {
       timestamp: new Date().toISOString(),
       queueStats: queueCounts,
     };
+  }
+
+  // --- Marketplace Moderation ---
+
+  async listProducts(
+    page = 1,
+    limit = 20,
+    status?: string,
+  ): Promise<{ items: Product[]; total: number }> {
+    const where: any = { type: ContentType.PRODUCT };
+    if (status) where.status = status as ContentStatus;
+
+    const [items, total] = await this.em.findAndCount(Product, where, {
+      orderBy: { createdAt: 'DESC' },
+      limit,
+      offset: (page - 1) * limit,
+      populate: ['creator'],
+      filters: { notDeleted: false },
+    });
+
+    return { items, total };
+  }
+
+  async updateProductStatus(
+    productId: string,
+    status: string,
+    adminUserId: string,
+  ): Promise<Product> {
+    const product = await this.em.findOne(
+      Product,
+      { id: productId, type: ContentType.PRODUCT },
+      { filters: { notDeleted: false } },
+    );
+    if (!product) throw new NotFoundException('Product not found');
+
+    const previousStatus = product.status;
+    product.status = status as ContentStatus;
+    await this.em.flush();
+
+    await this.auditService.log(
+      adminUserId,
+      'UPDATE_PRODUCT_STATUS',
+      'PRODUCT',
+      productId,
+      { previousStatus, newStatus: status },
+    );
+
+    return product;
+  }
+
+  async listAuctions(
+    page = 1,
+    limit = 20,
+    status?: string,
+  ): Promise<{ items: Auction[]; total: number }> {
+    const where: any = {};
+    if (status) where.status = status as AuctionStatus;
+
+    const [items, total] = await this.em.findAndCount(Auction, where, {
+      orderBy: { createdAt: 'DESC' },
+      limit,
+      offset: (page - 1) * limit,
+      populate: ['product'],
+    });
+
+    return { items, total };
+  }
+
+  async cancelAuction(
+    auctionId: string,
+    adminUserId: string,
+  ): Promise<Auction> {
+    const auction = await this.em.findOne(Auction, { id: auctionId });
+    if (!auction) throw new NotFoundException('Auction not found');
+
+    const previousStatus = auction.status;
+    auction.status = AuctionStatus.CANCELLED;
+    await this.em.flush();
+
+    await this.auditService.log(
+      adminUserId,
+      'CANCEL_AUCTION',
+      'AUCTION',
+      auctionId,
+      { previousStatus },
+    );
+
+    return auction;
+  }
+
+  // --- Sponsored Campaign Management ---
+
+  async listCampaigns(
+    page = 1,
+    limit = 20,
+    status?: string,
+  ): Promise<{ items: SponsoredCampaign[]; total: number }> {
+    const where: any = {};
+    if (status) where.status = status as CampaignStatus;
+
+    const [items, total] = await this.em.findAndCount(SponsoredCampaign, where, {
+      orderBy: { createdAt: 'DESC' },
+      limit,
+      offset: (page - 1) * limit,
+      populate: ['advertiser', 'content'],
+    });
+
+    return { items, total };
+  }
+
+  async updateCampaignStatus(
+    campaignId: string,
+    status: string,
+    adminUserId: string,
+  ): Promise<SponsoredCampaign> {
+    const campaign = await this.em.findOne(SponsoredCampaign, { id: campaignId });
+    if (!campaign) throw new NotFoundException('Campaign not found');
+
+    const previousStatus = campaign.status;
+    campaign.status = status as CampaignStatus;
+    await this.em.flush();
+
+    await this.auditService.log(
+      adminUserId,
+      'UPDATE_CAMPAIGN_STATUS',
+      'CAMPAIGN',
+      campaignId,
+      { previousStatus, newStatus: status },
+    );
+
+    return campaign;
+  }
+
+  // --- Broadcast Notification ---
+
+  async broadcastNotification(
+    title: string,
+    message: string,
+    adminUserId: string,
+    targetRole?: string,
+  ): Promise<{ notifiedCount: number }> {
+    const where: any = { status: UserStatus.ACTIVE, isBot: false };
+    if (targetRole) where.role = targetRole as Role;
+
+    const users = await this.em.find(User, where, { fields: ['id'] });
+
+    for (const user of users) {
+      this.em.create(Notification, {
+        user: this.em.getReference(User, user.id),
+        type: NotificationType.SYSTEM,
+        title,
+        body: message,
+        data: { type: 'admin_broadcast' },
+      });
+    }
+
+    await this.em.flush();
+
+    await this.auditService.log(
+      adminUserId,
+      'BROADCAST_NOTIFICATION',
+      'NOTIFICATION',
+      undefined,
+      { title, targetRole, notifiedCount: users.length },
+    );
+
+    return { notifiedCount: users.length };
   }
 }
