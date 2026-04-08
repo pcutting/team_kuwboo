@@ -7,6 +7,9 @@ import { UserDetailPage } from './pages/UserDetailPage';
 import { BotsPage } from './pages/BotsPage';
 import { ContentPage } from './pages/ContentPage';
 import { ReportsPage } from './pages/ReportsPage';
+import { MarketplacePage } from './pages/MarketplacePage';
+import { SponsoredPage } from './pages/SponsoredPage';
+import { BroadcastPage } from './pages/BroadcastPage';
 import { AuditLogPage } from './pages/AuditLogPage';
 import { AdminLayout } from './components/AdminLayout';
 import { ProtectedRoute } from './components/ProtectedRoute';
@@ -33,6 +36,9 @@ export function App() {
         <Route path="content" element={<ContentPage />} />
         <Route path="bots" element={<BotsPage />} />
         <Route path="reports" element={<ReportsPage />} />
+        <Route path="marketplace" element={<MarketplacePage />} />
+        <Route path="sponsored" element={<SponsoredPage />} />
+        <Route path="broadcast" element={<BroadcastPage />} />
         <Route path="audit-log" element={<AuditLogPage />} />
       </Route>
     </Routes>
