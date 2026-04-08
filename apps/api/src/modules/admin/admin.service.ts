@@ -1,4 +1,6 @@
 import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import { InjectQueue } from '@nestjs/bullmq';
+import { Queue } from 'bullmq';
 import { EntityManager } from '@mikro-orm/postgresql';
 import { User } from '../users/entities/user.entity';
 import { Media } from '../media/entities/media.entity';
@@ -17,11 +19,262 @@ import { EnforceAction } from './dto/enforce-report.dto';
 @Injectable()
 export class AdminService {
   constructor(
+    @InjectQueue('bot-actions') private readonly botQueue: Queue,
     private readonly em: EntityManager,
     private readonly auditService: AdminAuditService,
     private readonly sessionsService: SessionsService,
     private readonly contentService: ContentService,
   ) {}
+
+  // --- Enhanced User Management ---
+
+  async getUserDetail(userId: string) {
+    const user = await this.em.findOne(User, { id: userId });
+    if (!user) throw new NotFoundException('User not found');
+
+    const [contentCount, commentCount, connectionCount, reportCount, devices] =
+      await Promise.all([
+        this.em.count(Content, { creator: userId }),
+        this.em.count(Comment, { author: userId }, { filters: { notDeleted: false } }),
+        this.em.count(Connection, {
+          $or: [{ fromUser: userId }, { toUser: userId }],
+        }),
+        this.em.count(Report, { reportedUser: userId }),
+        this.em.find(Device, { user: userId }),
+      ]);
+
+    const recentReports = await this.em.find(
+      Report,
+      { reportedUser: userId },
+      { orderBy: { createdAt: 'DESC' }, limit: 10 },
+    );
+
+    return {
+      user,
+      engagement: {
+        contentCount,
+        commentCount,
+        connectionCount,
+      },
+      reportHistory: {
+        totalReports: reportCount,
+        recentReports,
+      },
+      devices,
+    };
+  }
+
+  async suspendUser(
+    userId: string,
+    reason: string,
+    adminUserId: string,
+    durationDays?: number,
+  ): Promise<User> {
+    const user = await this.em.findOne(User, { id: userId });
+    if (!user) throw new NotFoundException('User not found');
+
+    user.status = UserStatus.SUSPENDED;
+    await this.em.flush();
+
+    await this.auditService.log(
+      adminUserId,
+      'SUSPEND_USER',
+      'USER',
+      userId,
+      { reason, durationDays },
+    );
+
+    return user;
+  }
+
+  async warnUser(
+    userId: string,
+    message: string,
+    adminUserId: string,
+  ): Promise<void> {
+    const user = await this.em.findOne(User, { id: userId });
+    if (!user) throw new NotFoundException('User not found');
+
+    this.em.create(Notification, {
+      user: this.em.getReference(User, userId),
+      type: NotificationType.SYSTEM,
+      title: 'Warning from Admin',
+      body: message,
+      data: { type: 'admin_warning' },
+    });
+    await this.em.flush();
+
+    await this.auditService.log(
+      adminUserId,
+      'WARN_USER',
+      'USER',
+      userId,
+      { message },
+    );
+  }
+
+  async revokeUserSessions(
+    userId: string,
+    adminUserId: string,
+  ): Promise<{ revokedCount: number }> {
+    const user = await this.em.findOne(User, { id: userId });
+    if (!user) throw new NotFoundException('User not found');
+
+    const revokedCount = await this.sessionsService.revokeAllForUser(userId);
+
+    await this.auditService.log(
+      adminUserId,
+      'REVOKE_SESSIONS',
+      'USER',
+      userId,
+      { revokedCount },
+    );
+
+    return { revokedCount };
+  }
+
+  async getUserContent(
+    userId: string,
+    page = 1,
+    limit = 20,
+  ): Promise<{ items: Content[]; total: number }> {
+    const user = await this.em.findOne(User, { id: userId });
+    if (!user) throw new NotFoundException('User not found');
+
+    const [items, total] = await this.em.findAndCount(
+      Content,
+      { creator: userId },
+      {
+        orderBy: { createdAt: 'DESC' },
+        limit,
+        offset: (page - 1) * limit,
+        filters: { notDeleted: false },
+      },
+    );
+
+    return { items, total };
+  }
+
+  async getUserReports(
+    userId: string,
+    page = 1,
+    limit = 20,
+  ): Promise<{ items: Report[]; total: number }> {
+    const user = await this.em.findOne(User, { id: userId });
+    if (!user) throw new NotFoundException('User not found');
+
+    const [items, total] = await this.em.findAndCount(
+      Report,
+      { reportedUser: userId },
+      {
+        orderBy: { createdAt: 'DESC' },
+        limit,
+        offset: (page - 1) * limit,
+        populate: ['reporter'],
+      },
+    );
+
+    return { items, total };
+  }
+
+  async searchUsers(
+    query: string,
+    page = 1,
+    limit = 20,
+  ): Promise<{ items: User[]; total: number }> {
+    const searchPattern = `%${query}%`;
+
+    const [items, total] = await this.em.findAndCount(
+      User,
+      {
+        $or: [
+          { name: { $ilike: searchPattern } },
+          { email: { $ilike: searchPattern } },
+          { phone: { $like: searchPattern } },
+        ],
+      },
+      {
+        orderBy: { createdAt: 'DESC' },
+        limit,
+        offset: (page - 1) * limit,
+      },
+    );
+
+    return { items, total };
+  }
+
+  // --- Report Enforcement ---
+
+  async enforceReport(
+    reportId: string,
+    action: EnforceAction,
+    adminUserId: string,
+    reason?: string,
+  ): Promise<Report> {
+    const report = await this.em.findOne(Report, { id: reportId }, {
+      populate: ['reportedUser', 'reportedContent'],
+    });
+    if (!report) throw new NotFoundException('Report not found');
+
+    switch (action) {
+      case EnforceAction.REMOVE_CONTENT: {
+        if (!report.reportedContent) {
+          throw new BadRequestException('Report has no associated content');
+        }
+        await this.contentService.softDelete(
+          report.reportedContent.id,
+          adminUserId,
+          true,
+        );
+        report.status = ReportStatus.RESOLVED;
+        break;
+      }
+
+      case EnforceAction.WARN_USER: {
+        if (!report.reportedUser) {
+          throw new BadRequestException('Report has no associated user');
+        }
+        this.em.create(Notification, {
+          user: this.em.getReference(User, report.reportedUser.id),
+          type: NotificationType.SYSTEM,
+          title: 'Warning from Admin',
+          body: reason || 'Your account has been flagged for violating community guidelines.',
+          data: { type: 'admin_warning', reportId },
+        });
+        report.status = ReportStatus.RESOLVED;
+        break;
+      }
+
+      case EnforceAction.SUSPEND_USER: {
+        if (!report.reportedUser) {
+          throw new BadRequestException('Report has no associated user');
+        }
+        report.reportedUser.status = UserStatus.SUSPENDED;
+        report.status = ReportStatus.RESOLVED;
+        break;
+      }
+
+      case EnforceAction.DISMISS: {
+        report.status = ReportStatus.DISMISSED;
+        break;
+      }
+    }
+
+    report.reviewedBy = adminUserId;
+    report.reviewNotes = reason;
+    report.reviewedAt = new Date();
+    await this.em.flush();
+
+    await this.auditService.log(
+      adminUserId,
+      'ENFORCE_REPORT',
+      'REPORT',
+      reportId,
+      { action, reason },
+    );
+
+    return report;
+  }
 
   async listUsers(
     page = 1,
@@ -255,5 +508,17 @@ export class AdminService {
       'COMMENT',
       commentId,
     );
+  }
+
+  async getSystemHealth(): Promise<Record<string, unknown>> {
+    const queueCounts = await this.botQueue.getJobCounts();
+
+    return {
+      uptime: process.uptime(),
+      memoryUsage: process.memoryUsage(),
+      nodeVersion: process.version,
+      timestamp: new Date().toISOString(),
+      queueStats: queueCounts,
+    };
   }
 }
