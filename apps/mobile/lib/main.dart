@@ -1,22 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+import 'app/app.dart';
 
 void main() {
-  runApp(const KuwbooMobileApp());
-}
-
-class KuwbooMobileApp extends StatelessWidget {
-  const KuwbooMobileApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return MaterialApp(
-      title: 'Kuwboo',
-      debugShowCheckedModeBanner: false,
-      home: const Scaffold(
-        body: Center(
-          child: Text('Kuwboo Mobile — Coming Soon'),
-        ),
-      ),
-    );
-  }
+  WidgetsFlutterBinding.ensureInitialized();
+  runApp(const ProviderScope(child: KuwbooApp()));
 }
