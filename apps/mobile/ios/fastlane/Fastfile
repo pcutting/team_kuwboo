@@ -1,0 +1,145 @@
+# Kuwboo iOS Fastfile
+#
+# Lanes:
+#   fastlane beta    — Build and upload to TestFlight (CI + local)
+#   fastlane build   — Just build the .ipa (no upload)
+#   fastlane tests   — Run Flutter + unit tests
+#
+# Required environment variables (CI loads these from GitHub Secrets):
+#   APP_STORE_CONNECT_API_KEY_ID       — e.g. "3B764CRX7S"
+#   APP_STORE_CONNECT_API_ISSUER_ID    — UUID from App Store Connect
+#   APP_STORE_CONNECT_API_KEY_CONTENT  — Full .p8 file contents (including header/footer)
+#                                        OR base64-encoded with APP_STORE_CONNECT_API_KEY_IS_BASE64=true
+#   KUWBOO_ENV                         — dev | staging | prod (default: prod for beta lane)
+#
+# Optional:
+#   BUILD_NUMBER                       — Override build number (otherwise uses GitHub run number or timestamp)
+#   MATCH_PASSWORD                     — Only if using fastlane match (not used by default)
+
+default_platform(:ios)
+
+MOBILE_ROOT = File.expand_path("../..", __dir__)
+IOS_ROOT = File.expand_path("..", __dir__)
+PROJECT_ROOT = File.expand_path("../../../..", __dir__)
+
+platform :ios do
+  before_all do
+    # Ensure we're running from a known directory
+    Dir.chdir(IOS_ROOT)
+  end
+
+  desc "Run Flutter tests"
+  lane :tests do
+    Dir.chdir(MOBILE_ROOT) do
+      sh("flutter pub get")
+      sh("flutter test")
+    end
+  end
+
+  desc "Build iOS .ipa (no upload). Used for PR validation."
+  lane :build do
+    kuwboo_env = ENV["KUWBOO_ENV"] || "staging"
+    build_number = resolve_build_number
+
+    Dir.chdir(MOBILE_ROOT) do
+      sh("flutter clean")
+      sh("flutter pub get")
+      sh("flutter build ios --release " \
+         "--no-codesign " \
+         "--build-number=#{build_number} " \
+         "--dart-define=KUWBOO_ENV=#{kuwboo_env}")
+    end
+
+    UI.success("iOS build complete for env=#{kuwboo_env}, build=#{build_number}")
+  end
+
+  desc "Build and upload to TestFlight"
+  lane :beta do
+    kuwboo_env = ENV["KUWBOO_ENV"] || "prod"
+    build_number = resolve_build_number
+
+    UI.message("Building Kuwboo for TestFlight: env=#{kuwboo_env}, build=#{build_number}")
+
+    # Load App Store Connect API key from environment
+    api_key = load_app_store_connect_api_key
+
+    # Flutter build (creates .xcarchive-ready artifacts)
+    Dir.chdir(MOBILE_ROOT) do
+      sh("flutter clean")
+      sh("flutter pub get")
+      sh("cd ios && pod install --repo-update")
+      sh("flutter build ipa --release " \
+         "--build-number=#{build_number} " \
+         "--dart-define=KUWBOO_ENV=#{kuwboo_env} " \
+         "--export-options-plist=ios/ExportOptions.plist")
+    end
+
+    ipa_path = File.join(MOBILE_ROOT, "build", "ios", "ipa", "kuwboo_mobile.ipa")
+
+    unless File.exist?(ipa_path)
+      # Fallback: check common alternate names
+      Dir.glob(File.join(MOBILE_ROOT, "build", "ios", "ipa", "*.ipa")).each do |f|
+        ipa_path = f
+        break
+      end
+    end
+
+    UI.user_error!("IPA not found at #{ipa_path}") unless File.exist?(ipa_path)
+
+    upload_to_testflight(
+      api_key: api_key,
+      ipa: ipa_path,
+      skip_waiting_for_build_processing: true,
+      skip_submission: true,
+      changelog: generate_changelog,
+      distribute_external: false,
+    )
+
+    UI.success("✅ Uploaded build #{build_number} to TestFlight")
+  end
+
+  # ------------------------------------------------------------------
+  # Helpers
+  # ------------------------------------------------------------------
+
+  def load_app_store_connect_api_key
+    key_id = ENV["APP_STORE_CONNECT_API_KEY_ID"]
+    issuer_id = ENV["APP_STORE_CONNECT_API_ISSUER_ID"]
+    key_content = ENV["APP_STORE_CONNECT_API_KEY_CONTENT"]
+    is_base64 = ENV["APP_STORE_CONNECT_API_KEY_IS_BASE64"] == "true"
+
+    UI.user_error!("APP_STORE_CONNECT_API_KEY_ID not set") if key_id.nil? || key_id.empty?
+    UI.user_error!("APP_STORE_CONNECT_API_ISSUER_ID not set") if issuer_id.nil? || issuer_id.empty?
+    UI.user_error!("APP_STORE_CONNECT_API_KEY_CONTENT not set") if key_content.nil? || key_content.empty?
+
+    app_store_connect_api_key(
+      key_id: key_id,
+      issuer_id: issuer_id,
+      key_content: key_content,
+      is_key_content_base64: is_base64,
+      in_house: false,
+    )
+  end
+
+  def resolve_build_number
+    explicit = ENV["BUILD_NUMBER"]
+    return explicit.to_i if explicit && !explicit.empty?
+
+    gh_run = ENV["GITHUB_RUN_NUMBER"]
+    return gh_run.to_i if gh_run && !gh_run.empty?
+
+    # Fallback: timestamp-based (yyMMddHHmm) so builds always increase
+    Time.now.strftime("%y%m%d%H%M").to_i
+  end
+
+  def generate_changelog
+    # Use git log since last tag, or fall back to last 10 commits
+    Dir.chdir(PROJECT_ROOT) do
+      last_tag = `git describe --tags --abbrev=0 2>/dev/null`.strip
+      range = last_tag.empty? ? "HEAD~10..HEAD" : "#{last_tag}..HEAD"
+      log = `git log --pretty=format:"- %s" #{range} 2>/dev/null`.strip
+      log = `git log --pretty=format:"- %s" -n 10`.strip if log.empty?
+      log.empty? ? "Internal build" : log
+    end
+  end
+end

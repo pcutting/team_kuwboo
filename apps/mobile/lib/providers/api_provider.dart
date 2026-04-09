@@ -1,18 +1,16 @@
 import 'package:dio/dio.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../config/environment.dart';
 import 'auth_provider.dart';
 
-/// Base URL for the Kuwboo API.
-///
-/// TODO: pull from environment config once deploy targets are set.
-const _baseUrl = 'https://api.kuwboo.com';
-
 /// Provides a configured [Dio] instance with auth interceptor.
+///
+/// The base URL is selected at build time via [Environment.apiBaseUrl].
 final dioProvider = Provider<Dio>((ref) {
   final dio = Dio(
     BaseOptions(
-      baseUrl: _baseUrl,
+      baseUrl: Environment.apiBaseUrl,
       connectTimeout: const Duration(seconds: 10),
       receiveTimeout: const Duration(seconds: 15),
       headers: {'Content-Type': 'application/json'},
