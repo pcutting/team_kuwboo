@@ -7,6 +7,9 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
 import { UnderscoreNamingStrategy } from '@mikro-orm/core';
 import { Migrator } from '@mikro-orm/migrations';
+import { LoggerModule } from 'nestjs-pino';
+import { randomUUID } from 'crypto';
+import type { IncomingMessage } from 'http';
 
 import databaseConfig from './config/database.config';
 import redisConfig from './config/redis.config';
@@ -44,6 +47,43 @@ import { BotsModule } from './modules/bots/bots.module';
       isGlobal: true,
       load: [databaseConfig, redisConfig, jwtConfig],
       envFilePath: '.env',
+    }),
+
+    LoggerModule.forRoot({
+      pinoHttp: {
+        level: process.env.LOG_LEVEL ?? 'info',
+        genReqId: (req: IncomingMessage) => {
+          const existing = req.headers['x-request-id'];
+          if (typeof existing === 'string' && existing.length > 0) return existing;
+          return randomUUID();
+        },
+        customProps: () => ({ service: 'kuwboo-api' }),
+        // Redact sensitive fields from structured logs. Pino redact paths use
+        // object-path syntax; wildcards match any single segment.
+        redact: {
+          paths: [
+            'req.headers.authorization',
+            'req.headers.cookie',
+            'req.headers["x-api-key"]',
+            'req.body.password',
+            'req.body.passwordHash',
+            'req.body.refreshToken',
+            'req.body.identityToken',
+            'req.body.payload',
+            'req.body.otp',
+            'req.body.code',
+            'res.headers["set-cookie"]',
+            '*.email',
+            '*.phone',
+            '*.passwordHash',
+          ],
+          censor: '[REDACTED]',
+        },
+        transport:
+          process.env.NODE_ENV === 'development'
+            ? { target: 'pino-pretty', options: { singleLine: true, translateTime: 'SYS:HH:MM:ss.l' } }
+            : undefined,
+      },
     }),
 
     MikroOrmModule.forRootAsync({
