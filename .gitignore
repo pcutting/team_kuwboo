@@ -8,7 +8,13 @@ apps/web/build/*
 *.iml
 .idea/
 .vscode/
+# Broad *.lock block (originally added for melos .lock files and similar).
+# Specific lock files we DO want tracked are re-included below.
 *.lock
+# Track Dart workspace lock file (reproducible pub resolution across devs + CI)
+!**/pubspec.lock
+# Track CocoaPods lock file (reproducible iOS native dependency versions)
+!**/Podfile.lock
 
 # Melos
 .melos/
