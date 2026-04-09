@@ -48,6 +48,7 @@
     "google-auth-library": "^10.6.2",
     "helmet": "^8.0.0",
     "ioredis": "^5.10.1",
+    "jose": "^5.10.0",
     "jsonwebtoken": "^9.0.3",
     "nestjs-pino": "^4.6.1",
     "passport": "^0.7.0",
