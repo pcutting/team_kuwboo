@@ -1,0 +1,99 @@
+name: iOS TestFlight
+
+on:
+  # Manual trigger from the Actions tab
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "KUWBOO_ENV to build"
+        required: true
+        default: "prod"
+        type: choice
+        options:
+          - prod
+          - staging
+      build_number:
+        description: "Explicit build number (leave blank for auto)"
+        required: false
+        default: ""
+
+  # Automatic on tagged releases
+  push:
+    tags:
+      - "ios-v*"
+
+concurrency:
+  group: ios-testflight
+  cancel-in-progress: false
+
+jobs:
+  testflight:
+    name: Build and upload to TestFlight
+    runs-on: macos-latest
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: apps/mobile
+
+    env:
+      FLUTTER_VERSION: "3.35.0"
+      XCODE_VERSION: "16.0"
+
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0  # Full history for changelog generation
+
+      - name: Select Xcode version
+        run: sudo xcode-select -s /Applications/Xcode_${{ env.XCODE_VERSION }}.app || sudo xcode-select -s /Applications/Xcode.app
+        working-directory: .
+
+      - name: Set up Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          flutter-version: ${{ env.FLUTTER_VERSION }}
+          channel: stable
+          cache: true
+
+      - name: Flutter doctor
+        run: flutter doctor -v
+
+      - name: Install Flutter dependencies
+        run: flutter pub get
+
+      - name: Set up Ruby
+        uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: "3.2"
+          bundler-cache: true
+          working-directory: apps/mobile/ios
+
+      - name: Install CocoaPods
+        run: bundle exec pod install --repo-update
+        working-directory: apps/mobile/ios
+
+      - name: Run Fastlane beta
+        working-directory: apps/mobile/ios
+        env:
+          APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APPLE_KEY_ID }}
+          APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APPLE_ISSUER_ID }}
+          APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APPLE_KEY_P8_BASE64 }}
+          APP_STORE_CONNECT_API_KEY_IS_BASE64: "true"
+          KUWBOO_ENV: ${{ github.event.inputs.environment || 'prod' }}
+          BUILD_NUMBER: ${{ github.event.inputs.build_number || github.run_number }}
+          FASTLANE_HIDE_CHANGELOG: "1"
+          FASTLANE_SKIP_UPDATE_CHECK: "1"
+          FASTLANE_DISABLE_COLORS: "1"
+        run: bundle exec fastlane beta
+
+      - name: Upload build artifacts (on failure)
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: ios-build-logs
+          path: |
+            apps/mobile/build/ios/archive/*.xcarchive/Logs/
+            apps/mobile/ios/fastlane/report.xml
+          retention-days: 7
+          if-no-files-found: ignore

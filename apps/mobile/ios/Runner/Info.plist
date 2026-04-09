@@ -7,7 +7,7 @@
 	<key>CFBundleDevelopmentRegion</key>
 	<string>$(DEVELOPMENT_LANGUAGE)</string>
 	<key>CFBundleDisplayName</key>
-	<string>Kuwboo Mobile</string>
+	<string>Kuwboo</string>
 	<key>CFBundleExecutable</key>
 	<string>$(EXECUTABLE_NAME)</string>
 	<key>CFBundleIdentifier</key>
@@ -26,6 +26,59 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+
+	<!-- Privacy usage descriptions (required by App Store) -->
+	<key>NSCameraUsageDescription</key>
+	<string>Kuwboo uses the camera so you can record videos, take photos, and share moments with your community.</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Kuwboo uses the microphone to record audio with your videos and for voice messages.</string>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>Kuwboo needs access to your photo library so you can share photos and videos in posts, products, and messages.</string>
+	<key>NSPhotoLibraryAddUsageDescription</key>
+	<string>Kuwboo needs permission to save media to your photo library.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>Kuwboo uses your location to show nearby users, local marketplace listings, and to power YoYo proximity features.</string>
+	<key>NSContactsUsageDescription</key>
+	<string>Kuwboo can look up your contacts to help you find friends who are already on Kuwboo.</string>
+	<key>NSUserTrackingUsageDescription</key>
+	<string>This lets Kuwboo measure engagement and improve your feed. Your data is never sold.</string>
+	<key>NSFaceIDUsageDescription</key>
+	<string>Kuwboo uses Face ID to quickly and securely sign you in.</string>
+
+	<!-- Background modes for real-time features (Socket.io, push notifications) -->
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>remote-notification</string>
+		<string>fetch</string>
+	</array>
+
+	<!-- Social login URL schemes -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>com.kuwboo.mobile.auth</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>com.kuwboo.mobile</string>
+				<string>kuwboo</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- App Transport Security: only allow HTTPS -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+	</dict>
+
+	<!-- Export compliance: app uses only standard HTTPS encryption -->
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>

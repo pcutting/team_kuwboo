@@ -36,5 +36,32 @@ apps/api/dist/
 *.p8
 AuthKey_*.p8
 apps/mobile/ios/secrets/
+
+# Fastlane runtime artifacts
 apps/mobile/ios/fastlane/report.xml
 apps/mobile/ios/fastlane/README.md
+apps/mobile/ios/fastlane/test_output/
+apps/mobile/ios/fastlane/screenshots/
+
+# CocoaPods
+apps/mobile/ios/Pods/
+apps/mobile/ios/.symlinks/
+apps/mobile/ios/Flutter/Flutter.framework/
+apps/mobile/ios/Flutter/Flutter.podspec
+
+# iOS build artifacts
+apps/mobile/ios/Runner/GeneratedPluginRegistrant.*
+apps/mobile/ios/build/
+apps/mobile/build/
+apps/mobile/.flutter-plugins
+apps/mobile/.flutter-plugins-dependencies
+
+# Android build artifacts
+apps/mobile/android/.gradle/
+apps/mobile/android/app/debug/
+apps/mobile/android/app/profile/
+apps/mobile/android/app/release/
+apps/mobile/android/local.properties
+apps/mobile/android/key.properties
+apps/mobile/android/**/*.keystore
+apps/mobile/android/**/*.jks
