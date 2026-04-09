@@ -135,9 +135,22 @@ export class Migration20260409AppleS2s extends Migration {
     this.addSql(`DROP TABLE IF EXISTS "apple_notification_events";`);
 
     // 3. roll back admin_audit_logs changes
+    //
+    // Order matters here. System-actor rows (admin_user_id IS NULL) must
+    // be deleted BEFORE we drop the actor_type column and BEFORE we
+    // re-apply NOT NULL. Those rows are by definition not representable
+    // in the pre-migration schema (which has no way to express "no
+    // admin user"), so deleting them is the only honest rollback.
+    // Leaving them behind causes a real bug: a subsequent re-run of
+    // up() fails because the CHECK constraint sees orphaned NULL
+    // admin_user_id rows with the defaulted actor_type = 'admin'.
     this.addSql(`
       ALTER TABLE "admin_audit_logs"
         DROP CONSTRAINT IF EXISTS "admin_audit_logs_actor_check";
+    `);
+    this.addSql(`
+      DELETE FROM "admin_audit_logs"
+      WHERE "admin_user_id" IS NULL;
     `);
     this.addSql(`
       ALTER TABLE "admin_audit_logs"
@@ -147,10 +160,13 @@ export class Migration20260409AppleS2s extends Migration {
       ALTER TABLE "admin_audit_logs"
         DROP COLUMN IF EXISTS "actor_type";
     `);
-    // NOTE: We do not restore NOT NULL on admin_user_id in down()
-    // because there may be NULL rows written by the system actor that
-    // would block the constraint. The down() path is only for reverting
-    // in a test environment where we are about to re-run the migration.
+    // Now that every remaining row has a non-NULL admin_user_id, we can
+    // safely re-apply the original NOT NULL constraint so the schema is
+    // a bit-perfect match with the pre-migration state.
+    this.addSql(`
+      ALTER TABLE "admin_audit_logs"
+        ALTER COLUMN "admin_user_id" SET NOT NULL;
+    `);
     this.addSql(`
       ALTER TABLE "admin_audit_logs"
         ADD CONSTRAINT "admin_audit_logs_admin_user_id_fkey"
