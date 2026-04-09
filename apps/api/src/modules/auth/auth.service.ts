@@ -6,6 +6,7 @@ import { OAuth2Client } from 'google-auth-library';
 import { UsersService } from '../users/users.service';
 import { SessionsService } from '../sessions/sessions.service';
 import { VerificationService } from '../verification/verification.service';
+import { AppleJwksService } from './apple/apple-jwks.service';
 import { User } from '../users/entities/user.entity';
 
 export interface AuthTokens {
@@ -30,6 +31,7 @@ export class AuthService {
     private readonly usersService: UsersService,
     private readonly sessionsService: SessionsService,
     private readonly verificationService: VerificationService,
+    private readonly appleJwks: AppleJwksService,
   ) {
     this.googleClient = new OAuth2Client();
   }
@@ -106,25 +108,28 @@ export class AuthService {
     fullName?: string,
     meta?: { userAgent?: string; ipAddress?: string },
   ): Promise<AuthResponse> {
-    // Verify Apple identity token via JWKS
-    const decoded = this.jwtService.decode(identityToken) as Record<string, any>;
-    if (!decoded?.sub) {
-      throw new UnauthorizedException('Invalid Apple token');
-    }
+    // Verify Apple identity token signature + claims against Apple's JWKS.
+    // This throws UnauthorizedException on:
+    //   - bad signature
+    //   - wrong issuer (not https://appleid.apple.com)
+    //   - wrong audience (aud does not match APPLE_BUNDLE_ID / APPLE_SERVICE_ID)
+    //   - expired exp / future nbf
+    //   - non-ES256 algorithm
+    const claims = await this.appleJwks.verify(identityToken);
 
-    let user = await this.usersService.findByAppleId(decoded.sub);
+    let user = await this.usersService.findByAppleId(claims.sub);
     let isNewUser = false;
 
     if (!user) {
-      if (decoded.email) {
-        user = await this.usersService.findByEmail(decoded.email);
+      if (claims.email) {
+        user = await this.usersService.findByEmail(claims.email);
       }
       if (user) {
-        user.appleId = decoded.sub;
+        user.appleId = claims.sub;
       } else {
         user = await this.usersService.create({
-          appleId: decoded.sub,
-          email: decoded.email || undefined,
+          appleId: claims.sub,
+          email: claims.email || undefined,
           name: fullName || 'User',
         });
         isNewUser = true;

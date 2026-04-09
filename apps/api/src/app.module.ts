@@ -14,6 +14,7 @@ import type { IncomingMessage } from 'http';
 import databaseConfig from './config/database.config';
 import redisConfig from './config/redis.config';
 import jwtConfig from './config/jwt.config';
+import appleConfig from './config/apple.config';
 
 import { HttpExceptionFilter } from './common/filters/http-exception.filter';
 import { TransformInterceptor } from './common/interceptors/transform.interceptor';
@@ -45,7 +46,7 @@ import { BotsModule } from './modules/bots/bots.module';
   imports: [
     ConfigModule.forRoot({
       isGlobal: true,
-      load: [databaseConfig, redisConfig, jwtConfig],
+      load: [databaseConfig, redisConfig, jwtConfig, appleConfig],
       envFilePath: '.env',
     }),
 

@@ -4,6 +4,7 @@ import { PassportModule } from '@nestjs/passport';
 import { AuthService } from './auth.service';
 import { AuthController } from './auth.controller';
 import { JwtStrategy } from './strategies/jwt.strategy';
+import { AppleAuthModule } from './apple/apple.module';
 import { UsersModule } from '../users/users.module';
 import { SessionsModule } from '../sessions/sessions.module';
 import { VerificationModule } from '../verification/verification.module';
@@ -12,6 +13,7 @@ import { VerificationModule } from '../verification/verification.module';
   imports: [
     PassportModule.register({ defaultStrategy: 'jwt' }),
     JwtModule.register({}),
+    AppleAuthModule,
     UsersModule,
     SessionsModule,
     VerificationModule,
