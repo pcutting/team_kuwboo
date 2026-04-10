@@ -1,7 +1,5 @@
-import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:kuwboo_shell/kuwboo_shell.dart';
-import 'yoyo_shared.dart';
 
 class YoyoUserProfile extends StatefulWidget {
   const YoyoUserProfile({super.key});
@@ -26,10 +24,8 @@ class _YoyoUserProfileState extends State<YoyoUserProfile> {
       child: Column(
         children: [
           ProtoSubBar(
-            title: state.yoyoVariant == 1 && !_isRevealed ? 'Anonymous User' : user.name,
+            title: !_isRevealed ? 'Anonymous User' : user.name,
             actions: [
-              if (state.yoyoVariant == 1) yoyoV2Badge(theme),
-              const SizedBox(width: 8),
               ProtoPressButton(
                 onTap: () => ProtoShareSheet.show(context),
                 child: Icon(theme.icons.share, size: 20, color: theme.text),
@@ -37,72 +33,10 @@ class _YoyoUserProfileState extends State<YoyoUserProfile> {
             ],
           ),
           Expanded(
-            child: state.yoyoVariant == 1
-                ? _buildV2Profile(context, theme, state, user, v2Encounter)
-                : _buildV1Profile(context, theme, state, user),
+            child: _buildV2Profile(context, theme, state, user, v2Encounter),
           ),
         ],
       ),
-    );
-  }
-
-  Widget _buildV1Profile(BuildContext context, ProtoTheme theme, PrototypeStateProvider state, NearbyUser user) {
-    return ListView(
-      padding: const EdgeInsets.symmetric(horizontal: 16),
-      children: [
-        const SizedBox(height: 16),
-        SizedBox(
-          height: 200,
-          child: ProtoNetworkImage(
-            imageUrl: user.imageUrl.replaceAll('100', '400'),
-            width: double.infinity,
-            borderRadius: BorderRadius.circular(theme.radiusMd),
-          ),
-        ),
-        const SizedBox(height: 16),
-        Row(
-          children: [
-            Text(user.name, style: theme.headline.copyWith(fontSize: 24)),
-            const SizedBox(width: 8),
-            if (user.isOnline)
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                decoration: BoxDecoration(color: theme.secondary.withValues(alpha: 0.15), borderRadius: BorderRadius.circular(12)),
-                child: Text('Online', style: TextStyle(fontSize: 11, fontWeight: FontWeight.w600, color: theme.secondary)),
-              ),
-          ],
-        ),
-        const SizedBox(height: 4),
-        Row(
-          children: [
-            Icon(theme.icons.locationOn, size: 16, color: theme.textTertiary),
-            const SizedBox(width: 4),
-            Text(user.distance, style: theme.body),
-          ],
-        ),
-        const SizedBox(height: 16),
-        Text('Interests', style: theme.title),
-        const SizedBox(height: 8),
-        Wrap(
-          spacing: 8,
-          runSpacing: 8,
-          children: ProtoDemoData.interests.take(6).map((i) => Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: theme.accentPillDecoration(theme.primary),
-            child: Text(i.name, style: theme.caption.copyWith(color: theme.primary, fontWeight: FontWeight.w600)),
-          )).toList(),
-        ),
-        const SizedBox(height: 20),
-        _buildActionButtons(context, theme, state, user),
-        const SizedBox(height: 24),
-        Center(
-          child: ProtoPressButton(
-            onTap: () => ProtoToast.show(context, theme.icons.flag, 'Report dialog would open'),
-            child: Text('Report or Block', style: theme.caption.copyWith(color: theme.textTertiary)),
-          ),
-        ),
-        const SizedBox(height: 16),
-      ],
     );
   }
 
