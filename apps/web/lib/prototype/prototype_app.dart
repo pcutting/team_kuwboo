@@ -64,6 +64,9 @@ class _PrototypeAppState extends State<PrototypeApp> {
   bool _yoyoLiveActive = false;
   int _yoyoLiveDuration = 0; // 0=30m, 1=2h, 2=8h, 3=Always
 
+  // YoYo full-screen radar
+  bool _isRadarFullscreen = false;
+
   // Global preferences
   bool _isDarkMode = false;
 
@@ -198,6 +201,10 @@ class _PrototypeAppState extends State<PrototypeApp> {
         yoyoLiveDuration: _yoyoLiveDuration,
         onYoyoLiveDurationChanged: (value) {
           setState(() => _yoyoLiveDuration = value);
+        },
+        isRadarFullscreen: _isRadarFullscreen,
+        onRadarFullscreenToggle: () {
+          setState(() => _isRadarFullscreen = !_isRadarFullscreen);
         },
         yoyoMode: widget.yoyoMode,
         onYoyoModeChanged: (value) {
