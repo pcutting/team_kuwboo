@@ -13,6 +13,48 @@ import '../../shared/proto_press_button.dart';
 import '../../shared/proto_dialogs.dart';
 import 'inner_circle_nearby.dart';
 
+// ─── Logarithmic range slider helpers ─────────────────────────────────
+// Maps 0.0–1.0 slider position to 200 m (0.2 km) → 40,000 km range
+double _logSliderToKm(double t) => 0.2 * pow(200000, t.clamp(0.0, 1.0));
+double _kmToLogSlider(double km) => (log(km / 0.2) / log(200000)).clamp(0.0, 1.0);
+
+// ─── Stop-button thumb shape for range slider ─────────────────────────
+
+class _StopButtonThumbShape extends SliderComponentShape {
+  @override
+  Size getPreferredSize(bool isEnabled, bool isDiscrete) => const Size(20, 20);
+
+  @override
+  void paint(
+    PaintingContext context,
+    Offset center, {
+    required Animation<double> activationAnimation,
+    required Animation<double> enableAnimation,
+    required bool isDiscrete,
+    required TextPainter labelPainter,
+    required RenderBox parentBox,
+    required SliderThemeData sliderTheme,
+    required TextDirection textDirection,
+    required double value,
+    required double textScaleFactor,
+    required Size sizeWithOverflow,
+  }) {
+    final canvas = context.canvas;
+    // Outer circle
+    canvas.drawCircle(
+      center,
+      10,
+      Paint()..color = sliderTheme.thumbColor ?? Colors.blue,
+    );
+    // Inner rounded stop square
+    final rect = RRect.fromRectAndRadius(
+      Rect.fromCenter(center: center, width: 8, height: 8),
+      const Radius.circular(2),
+    );
+    canvas.drawRRect(rect, Paint()..color = Colors.white);
+  }
+}
+
 // ─── Organic avatar (asymmetric border radius) ────────────────────────
 
 /// Organic-shaped avatar using asymmetric [BorderRadius.only].
@@ -128,7 +170,6 @@ class _YoyoV2NearbyView extends StatelessWidget {
 
     return Column(
       children: [
-        const _V2SessionHeader(),
         Expanded(
           child: AnimatedSwitcher(
             duration: const Duration(milliseconds: 300),
@@ -820,35 +861,48 @@ class _V2RadarControlBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final sliderValue = _kmToLogSlider(state.yoyoRange);
+
     return Padding(
-      padding: const EdgeInsets.only(left: 12, right: 8, top: 0, bottom: 0),
+      padding: const EdgeInsets.only(left: 8, right: 8, top: 0, bottom: 0),
       child: Row(
         children: [
-          // Encounter filter chips (compact)
-          for (final label in ['all', 'passby', 'nearby']) ...[
-            ProtoPressButton(
-              onTap: () => state.onYoyoV2EncounterFilterChanged(label),
-              child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: state.yoyoV2EncounterFilter == label
-                      ? theme.primary.withValues(alpha: 0.15)
-                      : Colors.transparent,
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: Text(
-                  label == 'all' ? 'All' : label == 'passby' ? 'Pass' : 'Near',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w600,
-                    color: state.yoyoV2EncounterFilter == label ? theme.primary : theme.textTertiary,
-                  ),
-                ),
+          // Inline live button
+          _InlineLiveButton(theme: theme),
+          const SizedBox(width: 6),
+          // Radar icon + range label
+          Icon(Icons.radar_rounded, size: 14, color: theme.primary),
+          const SizedBox(width: 3),
+          Text(
+            _formatRange(state.yoyoRange),
+            style: TextStyle(
+              fontSize: 10,
+              fontWeight: FontWeight.w600,
+              color: theme.text,
+            ),
+          ),
+          const SizedBox(width: 4),
+          // Logarithmic range slider
+          Expanded(
+            child: SliderTheme(
+              data: SliderThemeData(
+                trackHeight: 3,
+                activeTrackColor: theme.primary,
+                inactiveTrackColor: theme.textTertiary.withValues(alpha: 0.15),
+                thumbShape: _StopButtonThumbShape(),
+                thumbColor: theme.primary,
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 16),
+                overlayColor: theme.primary.withValues(alpha: 0.12),
+              ),
+              child: Slider(
+                value: sliderValue,
+                onChanged: (t) {
+                  state.onYoyoRangeChanged(_logSliderToKm(t));
+                },
               ),
             ),
-            const SizedBox(width: 2),
-          ],
-          const Spacer(),
+          ),
+          const SizedBox(width: 4),
           // Filter button
           ProtoPressButton(
             onTap: () => state.push(ProtoRoutes.yoyoFilters),
@@ -930,8 +984,8 @@ class _V2RadarArea extends StatelessWidget {
                 height: h,
                 child: Stack(
                   children: [
-                    // Range rings with category labels
-                    ..._buildV2RangeRings(cx, cy, maxRadius, theme),
+                    // Range rings with dynamic distance labels
+                    ..._buildV2RangeRings(cx, cy, maxRadius, theme, state.yoyoRange),
 
                     // "You" marker
                     Positioned(
@@ -1040,10 +1094,25 @@ class _V2RadarArea extends StatelessWidget {
   }
 
   static List<Widget> _buildV2RangeRings(
-    double cx, double cy, double maxRadius, ProtoTheme theme,
+    double cx, double cy, double maxRadius, ProtoTheme theme, double range,
   ) {
-    const labels = ['Very Near', 'Nearby', 'Passing'];
-    const fractions = [0.33, 0.66, 1.0];
+    final List<int> labels;
+    if (range <= 5) {
+      labels = [1, 2, 5];
+    } else if (range <= 10) {
+      labels = [2, 5, 10];
+    } else if (range <= 30) {
+      labels = [5, 10, 30];
+    } else if (range <= 200) {
+      labels = [20, 50, range.round()];
+    } else if (range <= 2000) {
+      labels = [100, 500, range.round()];
+    } else {
+      labels = [1000, 5000, range.round()];
+    }
+
+    final maxLabel = labels.last.toDouble();
+    final fractions = labels.map((l) => l / maxLabel).toList();
 
     return [
       for (int i = 0; i < 3; i++) ...[
@@ -1066,7 +1135,7 @@ class _V2RadarArea extends StatelessWidget {
           left: cx + maxRadius * fractions[i] + 4,
           top: cy - 7,
           child: Text(
-            labels[i],
+            _formatRange(labels[i].toDouble()),
             style: TextStyle(
               fontSize: 8,
               fontWeight: FontWeight.w500,
@@ -1287,8 +1356,12 @@ class _V2ActionBar extends StatelessWidget {
 }
 
 /// Filter DemoData.nearbyUsers based on current state (range, friends, interests).
-/// Format range for display — "1 km", "200 km", "5,000 km", "20,000 km"
+/// Format range for display — "200 m", "5 km", "5,000 km", or "Global"
 String _formatRange(double range) {
+  if (range >= 39000) return 'Global';
+  if (range < 1) {
+    return '${(range * 1000).round()} m';
+  }
   final km = range.round();
   if (km >= 1000) {
     final thousands = km ~/ 1000;
