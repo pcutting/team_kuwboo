@@ -21,6 +21,8 @@ double _kmToLogSlider(double km) => (log(km / 0.2) / log(200000)).clamp(0.0, 1.0
 // ─── Stop-button thumb shape for range slider ─────────────────────────
 
 class _StopButtonThumbShape extends SliderComponentShape {
+  const _StopButtonThumbShape();
+
   @override
   Size getPreferredSize(bool isEnabled, bool isDiscrete) => const Size(20, 20);
 
@@ -862,6 +864,10 @@ class _V2AreaView extends StatelessWidget {
     final theme = ProtoTheme.of(context);
     final state = PrototypeStateProvider.of(context);
 
+    if (state.isRadarFullscreen) {
+      return _FullscreenRadarView(theme: theme);
+    }
+
     return Column(
       children: [
         const SizedBox(height: 44), // space for transparent overlay nav
@@ -877,6 +883,211 @@ class _V2AreaView extends StatelessWidget {
         _V2ActionBar(theme: theme),
         const SizedBox(height: 8),
       ],
+    );
+  }
+}
+
+// ─── Full-Screen Radar View ─────────────────────────────────────────
+
+class _FullscreenRadarView extends StatelessWidget {
+  final ProtoTheme theme;
+  const _FullscreenRadarView({required this.theme});
+
+  @override
+  Widget build(BuildContext context) {
+    final state = PrototypeStateProvider.of(context);
+
+    return Stack(
+      children: [
+        // Full-screen radar
+        Positioned.fill(
+          child: GestureDetector(
+            onDoubleTap: state.onRadarFullscreenToggle, // double-tap exits too
+            child: state.yoyoLiveActive
+                ? _V2RadarArea(theme: theme)
+                : _HiddenV2RadarArea(theme: theme),
+          ),
+        ),
+
+        // Floating minimize button (top-right)
+        Positioned(
+          top: 16,
+          right: 16,
+          child: _FloatingMinimizeButton(theme: theme),
+        ),
+
+        // Minimal floating range slider (bottom, semi-transparent pill)
+        Positioned(
+          bottom: 16,
+          left: 24,
+          right: 24,
+          child: _FloatingRangeSlider(theme: theme, state: state),
+        ),
+
+        // Bottom edge swipe zone
+        Positioned(
+          bottom: 0,
+          left: 0,
+          right: 0,
+          child: _BottomEdgeSwipeZone(
+            onExit: state.onRadarFullscreenToggle,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+// ─── Floating Minimize Button ───────────────────────────────────────
+
+class _FloatingMinimizeButton extends StatefulWidget {
+  final ProtoTheme theme;
+  const _FloatingMinimizeButton({required this.theme});
+
+  @override
+  State<_FloatingMinimizeButton> createState() => _FloatingMinimizeButtonState();
+}
+
+class _FloatingMinimizeButtonState extends State<_FloatingMinimizeButton> {
+  double _opacity = 0.7;
+  Timer? _fadeTimer;
+
+  void _resetFadeTimer() {
+    setState(() => _opacity = 0.7);
+    _fadeTimer?.cancel();
+    _fadeTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _opacity = 0.3);
+    });
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _resetFadeTimer();
+  }
+
+  @override
+  void dispose() {
+    _fadeTimer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final state = PrototypeStateProvider.of(context);
+
+    return GestureDetector(
+      onTap: () {
+        state.onRadarFullscreenToggle();
+      },
+      onTapDown: (_) => _resetFadeTimer(),
+      child: Semantics(
+        label: 'Exit full screen',
+        button: true,
+        child: AnimatedOpacity(
+          opacity: _opacity,
+          duration: const Duration(seconds: 2),
+          child: Container(
+            width: 44,
+            height: 44,
+            decoration: BoxDecoration(
+              color: widget.theme.surface.withValues(alpha: 0.8),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.15),
+                  blurRadius: 8,
+                ),
+              ],
+            ),
+            child: Icon(
+              Icons.close_fullscreen_rounded,
+              size: 20,
+              color: widget.theme.text,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Floating Range Slider (fullscreen mode) ────────────────────────
+
+class _FloatingRangeSlider extends StatelessWidget {
+  final ProtoTheme theme;
+  final PrototypeStateProvider state;
+  const _FloatingRangeSlider({required this.theme, required this.state});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      decoration: BoxDecoration(
+        color: theme.surface.withValues(alpha: 0.7),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: Row(
+        children: [
+          Icon(Icons.radar_rounded, size: 14, color: theme.secondary),
+          const SizedBox(width: 6),
+          Text(
+            _formatRange(state.yoyoRange),
+            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: theme.secondary),
+          ),
+          Expanded(
+            child: SliderTheme(
+              data: SliderThemeData(
+                activeTrackColor: theme.primary,
+                thumbColor: theme.primary,
+                inactiveTrackColor: theme.textTertiary.withValues(alpha: 0.15),
+                trackHeight: 2,
+                thumbShape: const _StopButtonThumbShape(),
+                overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+              ),
+              child: Slider(
+                min: 0,
+                max: 1,
+                value: _kmToLogSlider(state.yoyoRange),
+                onChanged: (t) => state.onYoyoRangeChanged(_logSliderToKm(t)),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+// ─── Bottom Edge Swipe Zone ─────────────────────────────────────────
+
+class _BottomEdgeSwipeZone extends StatelessWidget {
+  final VoidCallback onExit;
+  const _BottomEdgeSwipeZone({required this.onExit});
+
+  @override
+  Widget build(BuildContext context) {
+    return GestureDetector(
+      onVerticalDragEnd: (details) {
+        // Swipe up with velocity exits fullscreen
+        if (details.primaryVelocity != null && details.primaryVelocity! < -200) {
+          onExit();
+        }
+      },
+      child: Container(
+        height: 40,
+        color: Colors.transparent,
+        child: Center(
+          child: Container(
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.white.withValues(alpha: 0.4),
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -1089,6 +1300,24 @@ class _V2RadarArea extends StatelessWidget {
                       Text(
                         '${encounters.length} encounters',
                         style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: theme.textSecondary),
+                      ),
+                      const SizedBox(width: 8),
+                      // Fullscreen expand icon
+                      ProtoPressButton(
+                        onTap: state.onRadarFullscreenToggle,
+                        child: Container(
+                          width: 24,
+                          height: 24,
+                          decoration: BoxDecoration(
+                            color: theme.textTertiary.withValues(alpha: 0.1),
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.open_in_full_rounded,
+                            size: 12,
+                            color: theme.textTertiary,
+                          ),
+                        ),
                       ),
                     ],
                   ),
