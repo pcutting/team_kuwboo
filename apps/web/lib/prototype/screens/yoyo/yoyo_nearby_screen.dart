@@ -868,21 +868,35 @@ class _V2AreaView extends StatelessWidget {
       return _FullscreenRadarView(theme: theme);
     }
 
-    // Hidden mode: radar fills space, controls at bottom with inline slider
+    // Hidden mode: radar fills area, floating "Hidden" pill, controls at bottom
     if (!state.yoyoLiveActive) {
-      return Column(
+      return Stack(
         children: [
-          const SizedBox(height: 52), // status bar + transparent nav
-          // Minimal control bar: just live button (no slider, no filter)
-          _HiddenControlBar(theme: theme, state: state),
-          // Radar fills remaining space
-          Expanded(child: _HiddenV2RadarArea(theme: theme)),
-          // Range slider with filter + settings inline
-          _BottomControlStrip(theme: theme, state: state),
-          const SizedBox(height: 6),
-          // Duration chips + Go Live button
-          _V2ActionBar(theme: theme),
-          const SizedBox(height: 8),
+          // Radar fills entire area
+          Positioned.fill(
+            child: _HiddenV2RadarArea(theme: theme),
+          ),
+          // Floating "Hidden" status pill (top-left, below nav)
+          Positioned(
+            top: 56,
+            left: 12,
+            child: _InlineLiveButton(theme: theme),
+          ),
+          // Bottom controls
+          Positioned(
+            left: 0,
+            right: 0,
+            bottom: 0,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _BottomControlStrip(theme: theme, state: state),
+                const SizedBox(height: 6),
+                _V2ActionBar(theme: theme),
+                const SizedBox(height: 8),
+              ],
+            ),
+          ),
         ],
       );
     }
@@ -913,27 +927,7 @@ class _V2AreaView extends StatelessWidget {
   }
 }
 
-// ─── Hidden-Mode Control Bar (minimal — no slider) ──────────────────
-
-class _HiddenControlBar extends StatelessWidget {
-  final ProtoTheme theme;
-  final PrototypeStateProvider state;
-  const _HiddenControlBar({required this.theme, required this.state});
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(left: 12, right: 12, top: 0, bottom: 4),
-      child: Row(
-        children: [
-          _InlineLiveButton(theme: theme),
-        ],
-      ),
-    );
-  }
-}
-
-// ─── Bottom Range Slider (hidden mode) ──────────────────────────────
+// ─── Bottom Control Strip ───────────────────────────────────────────
 
 /// Bottom control strip: range slider + filter + settings in one row.
 /// Used in both hidden and live modes above the bottom nav.
