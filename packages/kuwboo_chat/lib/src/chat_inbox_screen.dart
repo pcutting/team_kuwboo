@@ -34,52 +34,10 @@ class ChatInboxScreen extends StatefulWidget {
 }
 
 class _ChatInboxScreenState extends State<ChatInboxScreen> {
-  int _variant = 0;
-
   List<DemoConversation> get _conversations {
     final all = ProtoDemoData.conversations;
     if (widget.moduleKey == null) return all;
     return all.where((c) => c.moduleContext == widget.moduleKey).toList();
-  }
-
-  // ── Variant toggle (1/2 pills) ────────────────────────────────────────
-
-  Widget _buildVariantToggle(ProtoTheme theme) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (int i = 0; i < 2; i++) ...[
-          GestureDetector(
-            onTap: () => setState(() => _variant = i),
-            child: Container(
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                color: i == _variant ? theme.primary : theme.background,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: i == _variant
-                      ? theme.primary
-                      : theme.textTertiary.withValues(alpha: 0.4),
-                  width: 1,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  '${i + 1}',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: i == _variant ? Colors.white : theme.textTertiary,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (i < 1) const SizedBox(width: 4),
-        ],
-      ],
-    );
   }
 
   // ── Build ──────────────────────────────────────────────────────────────
@@ -97,12 +55,9 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
         children: [
           ProtoSubBar(
             title: widget.title,
-            actions: [_buildVariantToggle(theme)],
           ),
 
-          // V2: search bar + mark-all-read
-          if (_variant == 1)
-            Padding(
+          Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
@@ -194,9 +149,7 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
                   ),
           ),
 
-          // V2: swipe hint
-          if (_variant == 1)
-            Padding(
+          Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
                 'Swipe for actions',

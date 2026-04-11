@@ -7,20 +7,12 @@ import '../../prototype_demo_data.dart';
 import '../../shared/proto_scaffold.dart';
 import '../../shared/proto_press_button.dart';
 import '../../shared/proto_dialogs.dart';
-import 'yoyo_shared.dart';
 import 'inner_circle_wave.dart';
 
-/// Broadcast wave — wave confirmation + recent waves list.
-/// V2 adds quick/full wave types, session context, reach indicator.
+/// Broadcast wave — wave confirmation + recent waves list with
+/// quick/full wave types, session context, and reach indicator.
 class YoyoWaveScreen extends StatefulWidget {
   const YoyoWaveScreen({super.key});
-
-  static const _recentWaves = [
-    _WaveData('Maya', '2m ago', 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?w=100&h=100&fit=crop', true),
-    _WaveData('Jordan', '15m ago', 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=100&h=100&fit=crop', false),
-    _WaveData('Sam', '1h ago', 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?w=100&h=100&fit=crop', true),
-    _WaveData('Riley', '3h ago', 'https://images.unsplash.com/photo-1517841905240-472988babdf9?w=100&h=100&fit=crop', false),
-  ];
 
   @override
   State<YoyoWaveScreen> createState() => _YoyoWaveScreenState();
@@ -62,19 +54,12 @@ class _YoyoWaveScreenState extends State<YoyoWaveScreen> {
         padding: const EdgeInsets.symmetric(horizontal: 16),
         children: [
           const SizedBox(height: 12),
-          Row(
-            children: [
-              Text('Wave', style: theme.headline.copyWith(fontSize: 24)),
-              const SizedBox(width: 8),
-              if (state.yoyoVariant == 1) yoyoV2Badge(theme),
-            ],
-          ),
+          Text('Wave', style: theme.headline.copyWith(fontSize: 24)),
           const SizedBox(height: 8),
           Text('Broadcast your presence to nearby users', style: theme.body.copyWith(color: theme.textSecondary)),
 
-          // V2: Wave type selector + session context
-          if (state.yoyoVariant == 1) ...[
-            const SizedBox(height: 12),
+          // Wave type selector + session context
+          const SizedBox(height: 12),
             // Session context badge
             Container(
               padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
@@ -152,8 +137,7 @@ class _YoyoWaveScreenState extends State<YoyoWaveScreen> {
                 style: theme.caption.copyWith(color: theme.textSecondary),
               ),
             ),
-          ],
-          SizedBox(height: state.yoyoVariant == 1 ? 12.0 : 20.0),
+          const SizedBox(height: 12),
 
           // Wave action card
           Container(
@@ -217,9 +201,8 @@ class _YoyoWaveScreenState extends State<YoyoWaveScreen> {
           Text('Recent Waves', style: theme.title),
           const SizedBox(height: 10),
 
-          if (state.yoyoVariant == 1)
-            // V2 waves with encounter context
-            for (int i = 0; i < ProtoDemoData.v2Waves.length; i++) ...[
+          // Waves with encounter context
+          for (int i = 0; i < ProtoDemoData.v2Waves.length; i++) ...[
               Builder(builder: (context) {
                 final wave = ProtoDemoData.v2Waves[i];
                 final hasWavedBack = _wavedBackIndices.contains(i);
@@ -280,79 +263,9 @@ class _YoyoWaveScreenState extends State<YoyoWaveScreen> {
                   ),
                 );
               }),
-            ]
-          else
-            // V1 waves
-            for (int i = 0; i < YoyoWaveScreen._recentWaves.length; i++) ...[
-              Builder(builder: (context) {
-                final wave = YoyoWaveScreen._recentWaves[i];
-                final hasWavedBack = _wavedBackIndices.contains(i);
-                return ProtoPressButton(
-                  duration: const Duration(milliseconds: 100),
-                  onTap: () => state.push(ProtoRoutes.yoyoProfile),
-                  child: Container(
-                    margin: const EdgeInsets.only(bottom: 8),
-                    padding: const EdgeInsets.all(12),
-                    decoration: theme.cardDecoration,
-                    child: Row(
-                      children: [
-                        ProtoAvatar(radius: 20, imageUrl: wave.imageUrl),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(wave.name, style: theme.title.copyWith(fontSize: 14)),
-                              const SizedBox(height: 2),
-                              Text(
-                                hasWavedBack
-                                    ? 'You waved back!'
-                                    : wave.isIncoming ? 'Waved at you' : 'You waved',
-                                style: theme.caption.copyWith(
-                                  color: hasWavedBack ? theme.secondary : null,
-                                  fontWeight: hasWavedBack ? FontWeight.w600 : null,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Text(wave.timeAgo, style: theme.caption),
-                        const SizedBox(width: 8),
-                        if (wave.isIncoming && !hasWavedBack)
-                          ProtoPressButton(
-                            onTap: () => _handleWaveBack(i, wave.name),
-                            child: Container(
-                              width: 32,
-                              height: 32,
-                              decoration: BoxDecoration(
-                                color: theme.primary.withValues(alpha: 0.1),
-                                shape: BoxShape.circle,
-                              ),
-                              child: Icon(theme.icons.wavingHand, size: 16, color: theme.primary),
-                            ),
-                          )
-                        else
-                          Icon(
-                            theme.icons.check,
-                            size: 18,
-                            color: hasWavedBack ? theme.secondary : theme.textTertiary,
-                          ),
-                      ],
-                    ),
-                  ),
-                );
-              }),
             ],
         ],
       ),
     );
   }
-}
-
-class _WaveData {
-  final String name;
-  final String timeAgo;
-  final String imageUrl;
-  final bool isIncoming;
-  const _WaveData(this.name, this.timeAgo, this.imageUrl, this.isIncoming);
 }

@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:kuwboo_shell/kuwboo_shell.dart';
-import 'yoyo_shared.dart';
 
 /// All known interest tags used in demo data.
 const _allInterests = [
@@ -13,8 +12,8 @@ const _allInterests = [
 String _interestLabel(String key) =>
     key[0].toUpperCase() + key.substring(1);
 
-/// YoYo filter bottom sheet — range slider, interest chips, friends-only toggle.
-/// V2 adds encounter type and relationship filter chips.
+/// YoYo filter bottom sheet — range slider, interest chips, friends-only toggle,
+/// encounter type and relationship filter chips.
 class YoyoFilterSheet extends StatelessWidget {
   const YoyoFilterSheet({super.key});
 
@@ -43,8 +42,6 @@ class YoyoFilterSheet extends StatelessWidget {
             child: Row(
               children: [
                 Text('Filters', style: theme.headline.copyWith(fontSize: 22)),
-                const SizedBox(width: 8),
-                if (state.yoyoVariant == 1) yoyoV2Badge(theme),
                 const Spacer(),
                 ProtoPressButton(
                   onTap: () {
@@ -85,9 +82,8 @@ class YoyoFilterSheet extends StatelessWidget {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 16),
               children: [
-                // ── V2: Encounter type filter ──
-                if (state.yoyoVariant == 1) ...[
-                  _FilterSection(
+                // ── Encounter type filter ──
+                _FilterSection(
                     title: 'Encounter Type',
                     child: Row(
                       children: [
@@ -119,7 +115,7 @@ class YoyoFilterSheet extends StatelessWidget {
                       ],
                     ),
                   ),
-                  // ── V2: Relationship filter ──
+                  // ── Relationship filter ──
                   _FilterSection(
                     title: 'Relationship',
                     child: Row(
@@ -152,7 +148,6 @@ class YoyoFilterSheet extends StatelessWidget {
                       ],
                     ),
                   ),
-                ],
                 // ── Range slider ──
                 _FilterSection(
                   title: 'Range',

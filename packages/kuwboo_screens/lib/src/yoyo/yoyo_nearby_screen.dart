@@ -3,7 +3,6 @@ import 'dart:math';
 import 'package:flutter/gestures.dart';
 import 'package:flutter/material.dart';
 import 'package:kuwboo_shell/kuwboo_shell.dart';
-import 'yoyo_shared.dart';
 import 'inner_circle_nearby.dart';
 
 // ─── Organic avatar (asymmetric border radius) ────────────────────────
@@ -102,14 +101,7 @@ class _YoyoNearbyScreenState extends State<YoyoNearbyScreen> {
       return const InnerCircleNearbyView();
     }
 
-    return state.yoyoVariant == 1
-        ? const _YoyoV2NearbyView()
-        : AnimatedSwitcher(
-            duration: const Duration(milliseconds: 300),
-            child: state.isYoyoAreaView
-                ? const _YoyoAreaView(key: ValueKey('area'))
-                : _YoyoListView(key: ValueKey('list-${state.yoyoRange}')),
-          );
+    return const _YoyoV2NearbyView();
   }
 }
 
@@ -212,8 +204,6 @@ class _V2SessionHeaderState extends State<_V2SessionHeader> {
                     _formatTime(_secondsRemaining),
                     style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w700, color: Colors.white),
                   ),
-                  const SizedBox(width: 6),
-                  yoyoV2Badge(theme),
                   const Spacer(),
                   ProtoPressButton(
                     onTap: () {
@@ -238,8 +228,6 @@ class _V2SessionHeaderState extends State<_V2SessionHeader> {
                 Row(
                   children: [
                     Text('Nearby', style: theme.headline.copyWith(fontSize: 24)),
-                    const SizedBox(width: 8),
-                    yoyoV2Badge(theme),
                     const Spacer(),
                   ],
                 ),

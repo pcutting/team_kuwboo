@@ -85,9 +85,6 @@ class YoyoState {
   final bool liveActive;
   final int liveDuration; // 0=30m, 1=2h, 2=8h, 3=Always
 
-  // Variant (0 = V1, 1 = V2)
-  final int variant;
-
   // Mode (0 = Social, 1 = Inner Circle)
   final int mode;
 
@@ -109,7 +106,6 @@ class YoyoState {
     this.v2EncounterTransparency = true,
     this.liveActive = false,
     this.liveDuration = 0,
-    this.variant = 0,
     this.mode = 0,
   });
 
@@ -131,7 +127,6 @@ class YoyoState {
     bool? v2EncounterTransparency,
     bool? liveActive,
     int? liveDuration,
-    int? variant,
     int? mode,
   }) {
     return YoyoState(
@@ -152,7 +147,6 @@ class YoyoState {
       v2EncounterTransparency: v2EncounterTransparency ?? this.v2EncounterTransparency,
       liveActive: liveActive ?? this.liveActive,
       liveDuration: liveDuration ?? this.liveDuration,
-      variant: variant ?? this.variant,
       mode: mode ?? this.mode,
     );
   }
@@ -238,11 +232,7 @@ class YoyoStateNotifier extends StateNotifier<YoyoState> {
     state = state.copyWith(liveDuration: value);
   }
 
-  // Variant & mode
-  void setVariant(int value) {
-    state = state.copyWith(variant: value);
-  }
-
+  // Mode
   void setMode(int value) {
     state = state.copyWith(mode: value);
   }
@@ -308,7 +298,6 @@ class ProtoStateAccess extends InheritedWidget {
   bool get yoyoV2EncounterTransparency => yoyo.v2EncounterTransparency;
   bool get yoyoLiveActive => yoyo.liveActive;
   int get yoyoLiveDuration => yoyo.liveDuration;
-  int get yoyoVariant => yoyo.variant;
   int get yoyoMode => yoyo.mode;
 
   // ── Convenience setters matching old PrototypeStateProvider API ──
@@ -330,7 +319,6 @@ class ProtoStateAccess extends InheritedWidget {
   void onYoyoV2EncounterTransparencyChanged(bool v) => yoyoNotifier.setV2EncounterTransparency(v);
   void onYoyoLiveToggle() => yoyoNotifier.toggleLive();
   void onYoyoLiveDurationChanged(int v) => yoyoNotifier.setLiveDuration(v);
-  void onYoyoVariantChanged(int v) => yoyoNotifier.setVariant(v);
   void onYoyoModeChanged(int v) => yoyoNotifier.setMode(v);
   void onDarkModeChanged(bool v) => shellNotifier.setDarkMode(v);
   void onModuleChanged(ProtoModule m) => shellNotifier.switchModule(m);

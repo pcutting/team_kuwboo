@@ -45,6 +45,11 @@ class _LoginScreenState extends State<LoginScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              Image.asset(
+                'assets/images/kuwboo-logo.png',
+                height: 48,
+              ),
+              const SizedBox(height: 24),
               Text(
                 'Welcome to Kuwboo',
                 style: theme.textTheme.headlineMedium?.copyWith(

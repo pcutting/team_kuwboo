@@ -17,46 +17,6 @@ class ChatInboxScreen extends StatefulWidget {
 }
 
 class _ChatInboxScreenState extends State<ChatInboxScreen> {
-  int _variant = 0; // 0 = v1 (simple), 1 = v2 (enhanced)
-
-  Widget _buildVariantToggle(ProtoTheme theme) {
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        for (int i = 0; i < 2; i++) ...[
-          GestureDetector(
-            onTap: () => setState(() => _variant = i),
-            child: Container(
-              width: 22,
-              height: 22,
-              decoration: BoxDecoration(
-                color: i == _variant ? theme.primary : theme.background,
-                shape: BoxShape.circle,
-                border: Border.all(
-                  color: i == _variant
-                      ? theme.primary
-                      : theme.textTertiary.withValues(alpha: 0.4),
-                  width: 1,
-                ),
-              ),
-              child: Center(
-                child: Text(
-                  '${i + 1}',
-                  style: TextStyle(
-                    fontSize: 10,
-                    fontWeight: FontWeight.w700,
-                    color: i == _variant ? Colors.white : theme.textTertiary,
-                  ),
-                ),
-              ),
-            ),
-          ),
-          if (i < 1) const SizedBox(width: 4),
-        ],
-      ],
-    );
-  }
-
   @override
   Widget build(BuildContext context) {
     final state = PrototypeStateProvider.of(context);
@@ -68,12 +28,9 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
         children: [
           ProtoSubBar(
             title: 'Messages',
-            actions: [_buildVariantToggle(theme)],
           ),
 
-          // V2: search bar + mark all read
-          if (_variant == 1)
-            Padding(
+          Padding(
               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
               child: Row(
                 children: [
@@ -132,8 +89,6 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
               ),
             ),
 
-          // V1: no search bar
-
           Expanded(
             child: ProtoDemoData.conversations.isEmpty
                 ? const ProtoEmptyState(
@@ -152,9 +107,7 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
                   ),
           ),
 
-          // V2: swipe hint at bottom
-          if (_variant == 1)
-            Padding(
+          Padding(
               padding: const EdgeInsets.only(bottom: 8),
               child: Text(
                 'Swipe for actions',
@@ -210,8 +163,7 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
                                   color: Colors.white))),
                     ),
                   ),
-                // V2: online indicator
-                if (_variant == 1 && i < 3)
+                if (i < 3)
                   Positioned(
                     right: 0,
                     bottom: 0,
@@ -235,8 +187,7 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
                 children: [
                   Row(
                     children: [
-                      // V2: pinned icon on first conversation
-                      if (_variant == 1 && i == 0) ...[
+                      if (i == 0) ...[
                         Icon(Icons.push_pin_rounded,
                             size: 12, color: theme.textTertiary),
                         const SizedBox(width: 4),
@@ -260,8 +211,7 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
                     ],
                   ),
                   const SizedBox(height: 2),
-                  // V2: typing preview on first conversation
-                  if (_variant == 1 && i == 0)
+                  if (i == 0)
                     Text(
                       '${conv.name} is typing...',
                       style: theme.body.copyWith(
@@ -283,8 +233,7 @@ class _ChatInboxScreenState extends State<ChatInboxScreen> {
               crossAxisAlignment: CrossAxisAlignment.end,
               children: [
                 Text(conv.timeAgo, style: theme.caption),
-                // V2: read receipt on second conversation
-                if (_variant == 1 && i == 1) ...[
+                if (i == 1) ...[
                   const SizedBox(height: 2),
                   const Icon(Icons.done_all_rounded,
                       size: 14, color: Color(0xFF4FC3F7)),
