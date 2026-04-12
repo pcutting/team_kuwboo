@@ -41,25 +41,11 @@ class ProtoTopBar extends StatelessWidget {
     final theme = ProtoTheme.of(context);
     final isInnerCircle = activeModule == ProtoModule.yoyo && state.yoyoMode == 1;
 
-    // In transparent/overlay mode, use a Column: opaque status bar + translucent nav
+    // In transparent/overlay mode, no background — radar flows behind everything
     if (transparent) {
-      return Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          // Faux status bar — slightly opaque so time/battery area is visible
-          Container(
-            height: 20,
-            color: theme.surface.withValues(alpha: 0.85),
-          ),
-          // Nav bar content — more transparent, radar shows through
-          Container(
-            padding: const EdgeInsets.only(left: 16, right: 16, top: 4, bottom: 6),
-            decoration: BoxDecoration(
-              color: theme.surface.withValues(alpha: 0.6),
-            ),
-            child: _buildNavContent(state, theme, isInnerCircle),
-          ),
-        ],
+      return Padding(
+        padding: const EdgeInsets.only(top: 20, left: 16, right: 16, bottom: 6),
+        child: _buildNavContent(state, theme, isInnerCircle, withShadows: true),
       );
     }
 
@@ -89,7 +75,35 @@ class ProtoTopBar extends StatelessWidget {
     );
   }
 
-  Widget _buildNavContent(PrototypeStateProvider state, ProtoTheme theme, bool isInnerCircle) {
+  Widget _buildNavContent(PrototypeStateProvider state, ProtoTheme theme, bool isInnerCircle, {bool withShadows = false}) {
+    // When transparent, give icons a subtle frosted backing so they pop over radar
+    Widget _iconBacking(Widget child) {
+      if (!withShadows) return child;
+      return Container(
+        decoration: BoxDecoration(
+          color: theme.surface.withValues(alpha: 0.45),
+          shape: BoxShape.circle,
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.08),
+              blurRadius: 4,
+            ),
+          ],
+        ),
+        child: child,
+      );
+    }
+
+    // Title gets a subtle text shadow when floating over radar
+    final titleStyle = theme.label.copyWith(
+      fontSize: 14,
+      letterSpacing: 2,
+      color: isInnerCircle ? _warmAmber : theme.text,
+      shadows: withShadows
+          ? [Shadow(color: Colors.black.withValues(alpha: 0.15), blurRadius: 4)]
+          : null,
+    );
+
     return Row(
         children: [
           // YoYo icon — toggles area/list when in YoYo Social, or shows people icon in Inner Circle
@@ -111,7 +125,7 @@ class ProtoTopBar extends StatelessWidget {
 
           const Spacer(),
 
-          // Title + mode toggle icon
+          // Title
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -120,11 +134,7 @@ class ProtoTopBar extends StatelessWidget {
                 child: Text(
                   _title(state.yoyoMode),
                   key: ValueKey(_title(state.yoyoMode)),
-                  style: theme.label.copyWith(
-                    fontSize: 14,
-                    letterSpacing: 2,
-                    color: isInnerCircle ? _warmAmber : theme.text,
-                  ),
+                  style: titleStyle,
                 ),
               ),
             ],
@@ -138,7 +148,7 @@ class ProtoTopBar extends StatelessWidget {
             button: true,
             child: GestureDetector(
             onTap: () => state.push(ProtoRoutes.chatInbox),
-            child: SizedBox(
+            child: _iconBacking(SizedBox(
               width: 36,
               height: 36,
               child: Stack(
@@ -147,7 +157,7 @@ class ProtoTopBar extends StatelessWidget {
                     child: Icon(
                       theme.icons.chatBubbleOutline,
                       size: 22,
-                      color: theme.textSecondary,
+                      color: withShadows ? theme.text : theme.textSecondary,
                     ),
                   ),
                   Positioned(
@@ -168,7 +178,7 @@ class ProtoTopBar extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
+            )),
           ),
           ),
           const SizedBox(width: 8),
@@ -179,7 +189,7 @@ class ProtoTopBar extends StatelessWidget {
             button: true,
             child: GestureDetector(
             onTap: () => state.push(ProtoRoutes.profileMy),
-            child: SizedBox(
+            child: _iconBacking(SizedBox(
               width: 36,
               height: 36,
               child: Stack(
@@ -191,7 +201,9 @@ class ProtoTopBar extends StatelessWidget {
                       decoration: BoxDecoration(
                         shape: BoxShape.circle,
                         border: Border.all(
-                          color: theme.primary.withValues(alpha: 0.3),
+                          color: withShadows
+                              ? theme.surface.withValues(alpha: 0.8)
+                              : theme.primary.withValues(alpha: 0.3),
                           width: 2,
                         ),
                         image: const DecorationImage(
@@ -216,7 +228,7 @@ class ProtoTopBar extends StatelessWidget {
                   ),
                 ],
               ),
-            ),
+            )),
           ),
           ),
         ],

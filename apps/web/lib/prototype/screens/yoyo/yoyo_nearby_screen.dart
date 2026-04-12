@@ -436,14 +436,28 @@ class _V2ListView extends StatelessWidget {
 
 /// Filter V2 encounters based on state filters.
 List<DemoV2Encounter> _filteredV2Encounters(PrototypeStateProvider state) {
+  final range = state.yoyoRange; // km
+
   return ProtoDemoData.v2Encounters.where((enc) {
     if (state.yoyoV2EncounterFilter == 'passby' && enc.encounterType != EncounterType.passby) return false;
     if (state.yoyoV2EncounterFilter == 'nearby' && enc.encounterType != EncounterType.nearby) return false;
     if (state.yoyoV2RelationshipFilter == 'friends' && enc.relationship != RelationshipType.friend) return false;
     if (state.yoyoV2RelationshipFilter == 'family' && enc.relationship != RelationshipType.family) return false;
     if (state.yoyoV2RelationshipFilter == 'strangers' && enc.relationship != RelationshipType.stranger) return false;
+    // Simulate range filtering: veryNear always visible, nearby needs >= 2km, passing needs >= 10km
+    if (enc.distanceCategory == DistanceCategory.nearby && range < 2) return false;
+    if (enc.distanceCategory == DistanceCategory.passing && range < 10) return false;
     return true;
   }).toList();
+}
+
+/// Marker scale factor — smaller avatars at wider ranges (more people, less detail).
+double _markerScale(double rangeKm) {
+  if (rangeKm <= 1) return 1.0;
+  if (rangeKm <= 5) return 0.9;
+  if (rangeKm <= 20) return 0.8;
+  if (rangeKm <= 100) return 0.7;
+  return 0.6;
 }
 
 // ─── V2 Teaser Card (pre-consent) ───────────────────────────────────
@@ -868,19 +882,27 @@ class _V2AreaView extends StatelessWidget {
       return _FullscreenRadarView(theme: theme);
     }
 
-    // Hidden mode: radar fills area, floating "Hidden" pill, controls at bottom
+    // Hidden mode: radar fills area, floating "Hidden" pill + count, controls at bottom
     if (!state.yoyoLiveActive) {
+      final hiddenCount = _filteredV2Encounters(state).length;
       return Stack(
         children: [
           // Radar fills entire area
           Positioned.fill(
             child: _HiddenV2RadarArea(theme: theme),
           ),
-          // Floating "Hidden" status pill (top-left, below nav)
+          // Floating "Hidden" pill + count badge (top, below nav)
           Positioned(
             top: 56,
             left: 12,
-            child: _InlineLiveButton(theme: theme),
+            right: 12,
+            child: Row(
+              children: [
+                _InlineLiveButton(theme: theme),
+                const SizedBox(width: 8),
+                _RadarCountBadge(count: hiddenCount, theme: theme, state: state),
+              ],
+            ),
           ),
           // Bottom controls
           Positioned(
@@ -893,7 +915,7 @@ class _V2AreaView extends StatelessWidget {
                 _BottomControlStrip(theme: theme, state: state),
                 const SizedBox(height: 6),
                 _V2ActionBar(theme: theme),
-                const SizedBox(height: 8),
+                const SizedBox(height: 10),
               ],
             ),
           ),
@@ -901,7 +923,8 @@ class _V2AreaView extends StatelessWidget {
       );
     }
 
-    // Live mode: radar-first, wave button top, controls at bottom
+    // Live mode: radar-first, wave button + count badge top, controls at bottom
+    final encounterCount = _filteredV2Encounters(state).length;
     return Stack(
       children: [
         // Radar fills the entire area (behind everything)
@@ -912,14 +935,24 @@ class _V2AreaView extends StatelessWidget {
         Column(
           children: [
             const SizedBox(height: 52), // status bar + transparent nav
-            // Centered wave button
-            _WaveButton(theme: theme),
+            // Wave button + count badge row
+            Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 16),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  _WaveButton(theme: theme),
+                  const SizedBox(width: 8),
+                  _RadarCountBadge(count: encounterCount, theme: theme, state: state),
+                ],
+              ),
+            ),
             const Spacer(),
             // Encounter card row (transparent background)
             _V2EncounterCardRow(theme: theme, transparent: true),
-            // Slider + filter + settings just above bottom nav
+            // Slider + filter + settings — just above bottom nav
             _BottomControlStrip(theme: theme, state: state),
-            const SizedBox(height: 8),
+            const SizedBox(height: 10),
           ],
         ),
       ],
@@ -930,7 +963,8 @@ class _V2AreaView extends StatelessWidget {
 // ─── Bottom Control Strip ───────────────────────────────────────────
 
 /// Bottom control strip: range slider + filter + settings in one row.
-/// Used in both hidden and live modes above the bottom nav.
+/// In live mode: left shows timer + stop icon. In hidden mode: left shows radar + range label.
+/// Slider shows distance as a value indicator label above the thumb.
 class _BottomControlStrip extends StatelessWidget {
   final ProtoTheme theme;
   final PrototypeStateProvider state;
@@ -938,22 +972,32 @@ class _BottomControlStrip extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final rangeLabel = _formatRange(state.yoyoRange);
+    final isLive = state.yoyoLiveActive;
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Container(
-        padding: const EdgeInsets.only(left: 10, right: 4, top: 2, bottom: 2),
+        padding: const EdgeInsets.only(left: 6, right: 4, top: 2, bottom: 2),
         decoration: BoxDecoration(
           color: theme.surface.withValues(alpha: 0.75),
           borderRadius: BorderRadius.circular(14),
         ),
         child: Row(
           children: [
-            Icon(Icons.radar_rounded, size: 14, color: theme.secondary),
-            const SizedBox(width: 4),
-            Text(
-              _formatRange(state.yoyoRange),
-              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: theme.secondary),
-            ),
+            // Left: timer+stop in live mode, radar+label in hidden mode
+            if (isLive)
+              _LiveTimerChip(theme: theme, state: state)
+            else ...[
+              const SizedBox(width: 4),
+              Icon(Icons.radar_rounded, size: 14, color: theme.secondary),
+              const SizedBox(width: 4),
+              Text(
+                rangeLabel,
+                style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: theme.secondary),
+              ),
+            ],
+            // Slider with value indicator showing distance
             Expanded(
               child: SliderTheme(
                 data: SliderThemeData(
@@ -963,11 +1007,16 @@ class _BottomControlStrip extends StatelessWidget {
                   trackHeight: 2,
                   thumbShape: const _StopButtonThumbShape(),
                   overlayShape: const RoundSliderOverlayShape(overlayRadius: 10),
+                  valueIndicatorColor: theme.primary,
+                  valueIndicatorTextStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: Colors.white),
+                  valueIndicatorShape: const PaddleSliderValueIndicatorShape(),
+                  showValueIndicator: ShowValueIndicator.always,
                 ),
                 child: Slider(
                   min: 0,
                   max: 1,
                   value: _kmToLogSlider(state.yoyoRange),
+                  label: rangeLabel,
                   onChanged: (t) => state.onYoyoRangeChanged(_logSliderToKm(t)),
                 ),
               ),
@@ -1011,6 +1060,103 @@ class _BottomControlStrip extends StatelessWidget {
   }
 }
 
+/// Live timer chip with stop icon — shows countdown or "LIVE" for Always mode.
+/// Tapping stops the live session.
+class _LiveTimerChip extends StatefulWidget {
+  final ProtoTheme theme;
+  final PrototypeStateProvider state;
+  const _LiveTimerChip({required this.theme, required this.state});
+
+  @override
+  State<_LiveTimerChip> createState() => _LiveTimerChipState();
+}
+
+class _LiveTimerChipState extends State<_LiveTimerChip> {
+  static const _durations = [-1, 15 * 60, 30 * 60, 60 * 60, 2 * 60 * 60, 4 * 60 * 60, 8 * 60 * 60, 12 * 60 * 60, 24 * 60 * 60];
+  Timer? _timer;
+  int _secondsRemaining = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _startCountdown();
+  }
+
+  void _startCountdown() {
+    final idx = widget.state.yoyoLiveDuration;
+    if (idx >= 0 && idx < _durations.length && _durations[idx] > 0) {
+      _secondsRemaining = _durations[idx];
+      _timer = Timer.periodic(const Duration(seconds: 1), (_) {
+        if (_secondsRemaining > 0) {
+          setState(() => _secondsRemaining--);
+        } else {
+          _timer?.cancel();
+          widget.state.onYoyoLiveToggle();
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  String _formatTime(int seconds) {
+    final h = seconds ~/ 3600;
+    final m = (seconds % 3600) ~/ 60;
+    final s = seconds % 60;
+    if (h > 0) return '${h}h${m.toString().padLeft(2, '0')}m';
+    return '${m}:${s.toString().padLeft(2, '0')}';
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final theme = widget.theme;
+    final isAlways = widget.state.yoyoLiveDuration == 0;
+
+    return ProtoPressButton(
+      onTap: () {
+        _timer?.cancel();
+        widget.state.onYoyoLiveToggle();
+        ProtoToast.show(context, Icons.visibility_off_rounded, 'Back to hidden');
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 4),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [theme.primary, theme.secondary]),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            // Stop icon (filled square)
+            Container(
+              width: 8,
+              height: 8,
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(1.5),
+              ),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              isAlways ? 'LIVE' : _formatTime(_secondsRemaining),
+              style: const TextStyle(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
+                letterSpacing: 0.5,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 // ─── Wave Button (live mode — small centered button under nav) ──────
 
 class _WaveButton extends StatelessWidget {
@@ -1022,33 +1168,80 @@ class _WaveButton extends StatelessWidget {
     final state = PrototypeStateProvider.of(context);
     final encounterCount = _filteredV2Encounters(state).length;
 
-    return Center(
-      child: ProtoPressButton(
-        onTap: () {
-          ProtoToast.show(context, theme.icons.wavingHand, 'Waved to $encounterCount people nearby!');
-        },
-        child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-          decoration: BoxDecoration(
-            gradient: LinearGradient(colors: [theme.primary, theme.secondary]),
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: [
-              BoxShadow(
-                color: theme.primary.withValues(alpha: 0.3),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(theme.icons.wavingHand, size: 16, color: Colors.white),
-              const SizedBox(width: 6),
-              const Text('Wave All', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
-            ],
-          ),
+    return ProtoPressButton(
+      onTap: () {
+        ProtoToast.show(context, theme.icons.wavingHand, 'Waved to $encounterCount people nearby!');
+      },
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(colors: [theme.primary, theme.secondary]),
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: theme.primary.withValues(alpha: 0.3),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(theme.icons.wavingHand, size: 16, color: Colors.white),
+            const SizedBox(width: 6),
+            const Text('Wave All', style: TextStyle(fontSize: 13, fontWeight: FontWeight.w700, color: Colors.white)),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+// ─── Radar Count Badge (floating, used near wave/hidden pill) ────────
+
+class _RadarCountBadge extends StatelessWidget {
+  final int count;
+  final ProtoTheme theme;
+  final PrototypeStateProvider state;
+  final bool isFullscreen;
+  const _RadarCountBadge({required this.count, required this.theme, required this.state, this.isFullscreen = false});
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: const EdgeInsets.only(left: 10, right: 4, top: 5, bottom: 5),
+      decoration: BoxDecoration(
+        color: theme.surface.withValues(alpha: 0.85),
+        borderRadius: BorderRadius.circular(16),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.sensors_rounded, size: 14, color: theme.secondary),
+          const SizedBox(width: 5),
+          Text(
+            '$count nearby',
+            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: theme.textSecondary),
+          ),
+          const SizedBox(width: 4),
+          ProtoPressButton(
+            onTap: state.onRadarFullscreenToggle,
+            child: Container(
+              width: 22,
+              height: 22,
+              decoration: BoxDecoration(
+                color: theme.textTertiary.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(
+                isFullscreen ? Icons.close_fullscreen_rounded : Icons.open_in_full_rounded,
+                size: 11,
+                color: theme.textTertiary,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -1056,51 +1249,111 @@ class _WaveButton extends StatelessWidget {
 
 // ─── Full-Screen Radar View ─────────────────────────────────────────
 
-class _FullscreenRadarView extends StatelessWidget {
+class _FullscreenRadarView extends StatefulWidget {
   final ProtoTheme theme;
   const _FullscreenRadarView({required this.theme});
 
   @override
+  State<_FullscreenRadarView> createState() => _FullscreenRadarViewState();
+}
+
+class _FullscreenRadarViewState extends State<_FullscreenRadarView> {
+  double _chromeOpacity = 1.0;
+  Timer? _fadeTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _resetFadeTimer();
+  }
+
+  @override
+  void dispose() {
+    _fadeTimer?.cancel();
+    super.dispose();
+  }
+
+  void _resetFadeTimer() {
+    setState(() => _chromeOpacity = 1.0);
+    _fadeTimer?.cancel();
+    _fadeTimer = Timer(const Duration(seconds: 3), () {
+      if (mounted) setState(() => _chromeOpacity = 0.2);
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     final state = PrototypeStateProvider.of(context);
+    final theme = widget.theme;
+    final encounterCount = _filteredV2Encounters(state).length;
 
-    return Stack(
-      children: [
-        // Full-screen radar
-        Positioned.fill(
-          child: GestureDetector(
-            onDoubleTap: state.onRadarFullscreenToggle, // double-tap exits too
-            child: state.yoyoLiveActive
-                ? _V2RadarArea(theme: theme)
-                : _HiddenV2RadarArea(theme: theme),
+    return GestureDetector(
+      onTap: _resetFadeTimer,
+      onPanStart: (_) => _resetFadeTimer(),
+      behavior: HitTestBehavior.translucent,
+      child: Stack(
+        children: [
+          // Full-screen radar
+          Positioned.fill(
+            child: GestureDetector(
+              onDoubleTap: state.onRadarFullscreenToggle,
+              child: state.yoyoLiveActive
+                  ? _V2RadarArea(theme: theme)
+                  : _HiddenV2RadarArea(theme: theme),
+            ),
           ),
-        ),
 
-        // Floating minimize button (top-right)
-        Positioned(
-          top: 16,
-          right: 16,
-          child: _FloatingMinimizeButton(theme: theme),
-        ),
-
-        // Minimal floating range slider (bottom, semi-transparent pill)
-        Positioned(
-          bottom: 16,
-          left: 24,
-          right: 24,
-          child: _FloatingRangeSlider(theme: theme, state: state),
-        ),
-
-        // Bottom edge swipe zone
-        Positioned(
-          bottom: 0,
-          left: 0,
-          right: 0,
-          child: _BottomEdgeSwipeZone(
-            onExit: state.onRadarFullscreenToggle,
+          // Floating minimize button (top-right, fades)
+          Positioned(
+            top: 16,
+            right: 16,
+            child: AnimatedOpacity(
+              opacity: _chromeOpacity,
+              duration: const Duration(seconds: 2),
+              child: _FloatingMinimizeButton(theme: theme),
+            ),
           ),
-        ),
-      ],
+
+          // Wave button + count badge (just above slider, fades)
+          Positioned(
+            bottom: 56,
+            left: 0,
+            right: 0,
+            child: AnimatedOpacity(
+              opacity: _chromeOpacity,
+              duration: const Duration(seconds: 2),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  if (state.yoyoLiveActive)
+                    _WaveButton(theme: theme),
+                  if (state.yoyoLiveActive)
+                    const SizedBox(width: 8),
+                  _RadarCountBadge(count: encounterCount, theme: theme, state: state, isFullscreen: true),
+                ],
+              ),
+            ),
+          ),
+
+          // Minimal floating range slider (bottom)
+          Positioned(
+            bottom: 16,
+            left: 24,
+            right: 24,
+            child: _FloatingRangeSlider(theme: theme, state: state),
+          ),
+
+          // Bottom edge swipe zone
+          Positioned(
+            bottom: 0,
+            left: 0,
+            right: 0,
+            child: _BottomEdgeSwipeZone(
+              onExit: state.onRadarFullscreenToggle,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -1188,39 +1441,43 @@ class _FloatingRangeSlider extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-      decoration: BoxDecoration(
-        color: theme.surface.withValues(alpha: 0.7),
-        borderRadius: BorderRadius.circular(20),
-      ),
-      child: Row(
-        children: [
-          Icon(Icons.radar_rounded, size: 14, color: theme.secondary),
-          const SizedBox(width: 6),
-          Text(
-            _formatRange(state.yoyoRange),
-            style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: theme.secondary),
-          ),
-          Expanded(
-            child: SliderTheme(
-              data: SliderThemeData(
-                activeTrackColor: theme.primary,
-                thumbColor: theme.primary,
-                inactiveTrackColor: theme.textTertiary.withValues(alpha: 0.15),
-                trackHeight: 2,
-                thumbShape: const _StopButtonThumbShape(),
-                overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
-              ),
-              child: Slider(
-                min: 0,
-                max: 1,
-                value: _kmToLogSlider(state.yoyoRange),
-                onChanged: (t) => state.onYoyoRangeChanged(_logSliderToKm(t)),
+    // Material ancestor required for Slider gesture handling
+    return Material(
+      type: MaterialType.transparency,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+        decoration: BoxDecoration(
+          color: theme.surface.withValues(alpha: 0.7),
+          borderRadius: BorderRadius.circular(20),
+        ),
+        child: Row(
+          children: [
+            Icon(Icons.radar_rounded, size: 14, color: theme.secondary),
+            const SizedBox(width: 6),
+            Text(
+              _formatRange(state.yoyoRange),
+              style: TextStyle(fontSize: 10, fontWeight: FontWeight.w600, color: theme.secondary),
+            ),
+            Expanded(
+              child: SliderTheme(
+                data: SliderThemeData(
+                  activeTrackColor: theme.primary,
+                  thumbColor: theme.primary,
+                  inactiveTrackColor: theme.textTertiary.withValues(alpha: 0.15),
+                  trackHeight: 2,
+                  thumbShape: const _StopButtonThumbShape(),
+                  overlayShape: const RoundSliderOverlayShape(overlayRadius: 12),
+                ),
+                child: Slider(
+                  min: 0,
+                  max: 1,
+                  value: _kmToLogSlider(state.yoyoRange),
+                  onChanged: (t) => state.onYoyoRangeChanged(_logSliderToKm(t)),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1426,20 +1683,23 @@ class _V2RadarArea extends StatelessWidget {
                       ),
                     ),
 
-                    // Encounter markers
+                    // Encounter markers — scale with range
                     for (int i = 0; i < encounters.length && i < positions.length; i++)
                       Positioned(
-                        left: positions[i].dx - 35,
-                        top: positions[i].dy - 35,
-                        child: ProtoPressButton(
-                          onTap: () {
-                            if (encounters[i].consentStatus == ConsentStatus.shared) {
-                              state.push(ProtoRoutes.yoyoProfile);
-                            } else {
-                              _showConsentSheet(context, encounters[i]);
-                            }
-                          },
-                          child: _V2AreaMarker(encounter: encounters[i], theme: theme),
+                        left: positions[i].dx - 35 * _markerScale(state.yoyoRange),
+                        top: positions[i].dy - 35 * _markerScale(state.yoyoRange),
+                        child: Transform.scale(
+                          scale: _markerScale(state.yoyoRange),
+                          child: ProtoPressButton(
+                            onTap: () {
+                              if (encounters[i].consentStatus == ConsentStatus.shared) {
+                                state.push(ProtoRoutes.yoyoProfile);
+                              } else {
+                                _showConsentSheet(context, encounters[i]);
+                              }
+                            },
+                            child: _V2AreaMarker(encounter: encounters[i], theme: theme),
+                          ),
                         ),
                       ),
                   ],
@@ -1447,50 +1707,7 @@ class _V2RadarArea extends StatelessWidget {
               ),
             ),
 
-            // Count badge
-            Positioned(
-              bottom: 8,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: theme.surface.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.sensors_rounded, size: 16, color: theme.secondary),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${encounters.length} encounters',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: theme.textSecondary),
-                      ),
-                      const SizedBox(width: 8),
-                      // Fullscreen expand icon
-                      ProtoPressButton(
-                        onTap: state.onRadarFullscreenToggle,
-                        child: Container(
-                          width: 24,
-                          height: 24,
-                          decoration: BoxDecoration(
-                            color: theme.textTertiary.withValues(alpha: 0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            Icons.open_in_full_rounded,
-                            size: 12,
-                            color: theme.textTertiary,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            // Count badge moved to _V2AreaView (top, near wave button)
           ],
         );
       },
@@ -1687,17 +1904,20 @@ class _HiddenV2RadarArea extends StatelessWidget {
                       ),
                     ),
 
-                    // Anonymous markers — friends get a subtle star badge
+                    // Anonymous markers — scale with range, friends get star badge
                     for (int i = 0; i < encounters.length && i < positions.length; i++)
                       Positioned(
-                        left: positions[i].dx - 35,
-                        top: positions[i].dy - 35,
-                        child: _AnonymousV2Marker(
-                          size: 30.0 + (i % 3) * 10.0,
-                          theme: theme,
-                          isFriend: encounters[i].relationship == RelationshipType.friend
-                              || encounters[i].relationship == RelationshipType.partner
-                              || encounters[i].relationship == RelationshipType.family,
+                        left: positions[i].dx - 35 * _markerScale(state.yoyoRange),
+                        top: positions[i].dy - 35 * _markerScale(state.yoyoRange),
+                        child: Transform.scale(
+                          scale: _markerScale(state.yoyoRange),
+                          child: _AnonymousV2Marker(
+                            size: 30.0 + (i % 3) * 10.0,
+                            theme: theme,
+                            isFriend: encounters[i].relationship == RelationshipType.friend
+                                || encounters[i].relationship == RelationshipType.partner
+                                || encounters[i].relationship == RelationshipType.family,
+                          ),
                         ),
                       ),
                   ],
@@ -1705,32 +1925,7 @@ class _HiddenV2RadarArea extends StatelessWidget {
               ),
             ),
 
-            // Count badge
-            Positioned(
-              bottom: 8,
-              left: 0,
-              right: 0,
-              child: Center(
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                  decoration: BoxDecoration(
-                    color: theme.surface.withValues(alpha: 0.9),
-                    borderRadius: BorderRadius.circular(16),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.sensors_rounded, size: 16, color: theme.secondary),
-                      const SizedBox(width: 6),
-                      Text(
-                        '${encounters.length} nearby',
-                        style: TextStyle(fontSize: 14, fontWeight: FontWeight.w600, color: theme.textSecondary),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ),
+            // Count badge moved to _V2AreaView (top, near hidden pill)
           ],
         );
       },
@@ -1887,10 +2082,23 @@ class _V2EncounterCardRow extends StatelessWidget {
   final bool transparent;
   const _V2EncounterCardRow({required this.theme, this.transparent = false});
 
+  /// Sort priority: partner > friend/family > stranger
+  static int _relationshipPriority(RelationshipType r) {
+    switch (r) {
+      case RelationshipType.partner: return 0;
+      case RelationshipType.friend: return 1;
+      case RelationshipType.family: return 1;
+      case RelationshipType.stranger: return 2;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final state = PrototypeStateProvider.of(context);
     final encounters = _filteredV2Encounters(state);
+    // Sort: love interests first, then friends/family, then strangers
+    final sorted = List<DemoV2Encounter>.from(encounters)
+      ..sort((a, b) => _relationshipPriority(a.relationship).compareTo(_relationshipPriority(b.relationship)));
 
     return SizedBox(
       height: 100,
@@ -1901,9 +2109,9 @@ class _V2EncounterCardRow extends StatelessWidget {
         child: ListView.builder(
           scrollDirection: Axis.horizontal,
           padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-          itemCount: encounters.length,
+          itemCount: sorted.length,
           itemBuilder: (context, index) {
-            final enc = encounters[index];
+            final enc = sorted[index];
             final isRevealed = enc.consentStatus == ConsentStatus.shared;
 
             return ProtoPressButton(
@@ -1919,9 +2127,8 @@ class _V2EncounterCardRow extends StatelessWidget {
                 margin: const EdgeInsets.only(right: 8),
                 padding: const EdgeInsets.symmetric(vertical: 6),
                 decoration: BoxDecoration(
-                  color: theme.surface,
+                  color: theme.surface.withValues(alpha: 0.8),
                   borderRadius: BorderRadius.circular(12),
-                  boxShadow: [BoxShadow(color: theme.text.withValues(alpha: 0.06), blurRadius: 8, offset: const Offset(0, 2))],
                 ),
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
@@ -1965,7 +2172,7 @@ class _V2ActionBar extends StatelessWidget {
   final ProtoTheme theme;
   const _V2ActionBar({required this.theme});
 
-  static const _durationLabels = ['30m', '2h', '8h', 'Always On'];
+  static const _durationLabels = ['Always', '15m', '30m', '1h', '2h', '4h', '8h', '12h', '24h'];
 
   @override
   Widget build(BuildContext context) {
@@ -2009,46 +2216,52 @@ class _V2ActionBar extends StatelessWidget {
     );
   }
 
-  /// Hidden mode — duration chips + "Go Live" button.
+  /// Hidden mode — scrollable duration chips + "Go Live" button.
   Widget _buildHiddenBar(BuildContext context, PrototypeStateProvider state) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Duration chips row
-          Row(
-            children: [
-              for (int i = 0; i < _durationLabels.length; i++) ...[
-                if (i > 0) const SizedBox(width: 6),
-                ProtoPressButton(
-                  onTap: () => state.onYoyoLiveDurationChanged(i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: state.yoyoLiveDuration == i
-                          ? theme.primary.withValues(alpha: 0.15)
-                          : theme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: state.yoyoLiveDuration == i
-                            ? theme.primary
-                            : theme.textTertiary.withValues(alpha: 0.2),
+          // Horizontally scrollable duration chips
+          SizedBox(
+            height: 32,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (int i = 0; i < _durationLabels.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 6),
+                    ProtoPressButton(
+                      onTap: () => state.onYoyoLiveDurationChanged(i),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: state.yoyoLiveDuration == i
+                              ? theme.primary.withValues(alpha: 0.15)
+                              : theme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: state.yoyoLiveDuration == i
+                                ? theme.primary
+                                : theme.textTertiary.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Text(
+                          _durationLabels[i],
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color: state.yoyoLiveDuration == i ? theme.primary : theme.textSecondary,
+                          ),
+                        ),
                       ),
                     ),
-                    child: Text(
-                      _durationLabels[i],
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: state.yoyoLiveDuration == i ? theme.primary : theme.textSecondary,
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ],
+                  ],
+                ],
+              ),
+            ),
           ),
           const SizedBox(height: 10),
           // Go Live gradient button
@@ -2061,7 +2274,7 @@ class _V2ActionBar extends StatelessWidget {
                 ProtoToast.show(
                   context,
                   Icons.sensors_rounded,
-                  label == 'Always On' ? 'You\'re now live' : 'Live for $label',
+                  label == 'Always' ? 'You\'re now live' : 'Live for $label',
                 );
               },
               child: Container(
@@ -3324,8 +3537,8 @@ class _InlineLiveButtonState extends State<_InlineLiveButton> {
   int _secondsRemaining = 0;
   bool _timerStarted = false; // tracks whether we've started timer for this live session
 
-  static const _durations = [30 * 60, 2 * 60 * 60, 8 * 60 * 60, -1];
-  static const _labels = ['30m', '2h', '8h', 'Always'];
+  static const _durations = [-1, 15 * 60, 30 * 60, 60 * 60, 2 * 60 * 60, 4 * 60 * 60, 8 * 60 * 60, 12 * 60 * 60, 24 * 60 * 60];
+  static const _labels = ['Always', '15m', '30m', '1h', '2h', '4h', '8h', '12h', '24h'];
 
   /// Start the countdown timer for the current duration.
   void _startTimer(PrototypeStateProvider state) {
@@ -3383,7 +3596,7 @@ class _InlineLiveButtonState extends State<_InlineLiveButton> {
     final state = PrototypeStateProvider.of(context);
     final theme = widget.theme;
     final isLive = state.yoyoLiveActive;
-    final isAlways = state.yoyoLiveDuration == 3;
+    final isAlways = state.yoyoLiveDuration == 0; // index 0 = "Always"
 
     // Auto-start timer if live was toggled externally (e.g. from GoLivePanel)
     if (isLive && !_timerStarted) {
@@ -3557,7 +3770,7 @@ class _GoLivePanel extends StatelessWidget {
   final ProtoTheme theme;
   const _GoLivePanel({required this.theme});
 
-  static const _durationLabels = ['30m', '2h', '8h', 'Always On'];
+  static const _durationLabels = ['Always', '15m', '30m', '1h', '2h', '4h', '8h', '12h', '24h'];
 
   @override
   Widget build(BuildContext context) {
@@ -3597,29 +3810,33 @@ class _GoLivePanel extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 8),
-          // Duration chips
-          Row(
-            children: [
-              for (int i = 0; i < _durationLabels.length; i++) ...[
-                if (i > 0) const SizedBox(width: 6),
-                ProtoPressButton(
-                  onTap: () => state.onYoyoLiveDurationChanged(i),
-                  child: AnimatedContainer(
-                    duration: const Duration(milliseconds: 200),
-                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: state.yoyoLiveDuration == i
-                          ? theme.primary.withValues(alpha: 0.15)
-                          : theme.surface,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: state.yoyoLiveDuration == i
-                            ? theme.primary
-                            : theme.textTertiary.withValues(alpha: 0.2),
-                      ),
-                    ),
-                    child: Text(
-                      _durationLabels[i],
+          // Duration chips — horizontally scrollable
+          SizedBox(
+            height: 32,
+            child: SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  for (int i = 0; i < _durationLabels.length; i++) ...[
+                    if (i > 0) const SizedBox(width: 6),
+                    ProtoPressButton(
+                      onTap: () => state.onYoyoLiveDurationChanged(i),
+                      child: AnimatedContainer(
+                        duration: const Duration(milliseconds: 200),
+                        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: state.yoyoLiveDuration == i
+                              ? theme.primary.withValues(alpha: 0.15)
+                              : theme.surface,
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: state.yoyoLiveDuration == i
+                                ? theme.primary
+                                : theme.textTertiary.withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Text(
+                          _durationLabels[i],
                       style: TextStyle(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -3628,8 +3845,10 @@ class _GoLivePanel extends StatelessWidget {
                     ),
                   ),
                 ),
+                ],
               ],
-            ],
+            ),
+            ),
           ),
           const SizedBox(height: 10),
           // Go Live button
@@ -3642,7 +3861,7 @@ class _GoLivePanel extends StatelessWidget {
                 ProtoToast.show(
                   context,
                   Icons.sensors_rounded,
-                  label == 'Always On' ? 'You\'re now live' : 'Live for $label',
+                  label == 'Always' ? 'You\'re now live' : 'Live for $label',
                 );
               },
               child: Container(
@@ -3686,7 +3905,7 @@ class _LiveSessionBarState extends State<_LiveSessionBar> {
   Timer? _timer;
   int _secondsRemaining = 0;
 
-  static const _durations = [30 * 60, 2 * 60 * 60, 8 * 60 * 60, -1]; // -1 = Always On
+  static const _durations = [-1, 15 * 60, 30 * 60, 60 * 60, 2 * 60 * 60, 4 * 60 * 60, 8 * 60 * 60, 12 * 60 * 60, 24 * 60 * 60]; // -1 = Always
 
   void _startTimer(PrototypeStateProvider state) {
     final duration = _durations[state.yoyoLiveDuration];
